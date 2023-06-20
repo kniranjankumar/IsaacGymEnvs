@@ -137,6 +137,7 @@ class HumanoidAMP(HumanoidAMPBase):
         return
 
     def _load_motion(self, motion_file):
+        print(motion_file, self.num_dof, self._key_body_ids, self.device)
         self._motion_lib = MotionLib(motion_file=motion_file, 
                                      num_dofs=self.num_dof,
                                      key_body_ids=self._key_body_ids.cpu().numpy(), 
