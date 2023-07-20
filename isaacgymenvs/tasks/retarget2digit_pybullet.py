@@ -66,8 +66,10 @@ def retarget_humanoid_to_digit_ik(marker_positions, digit_eff_idxs, digit_id, in
     # time.sleep(1)
     curr_orientation = [p.getLinkState(digit_id, digit_eff_idx)[5] for digit_eff_idx in digit_eff_idxs]
     curr_orientation = np.array(curr_orientation)
-    curr_orientation[2,:] = np.array([0,0,0,1])
-    curr_orientation[3,:] = np.array([0,0,0,1])
+    # curr_orientation[0,:] = np.array([0,0,0,1])
+    # curr_orientation[1,:] = np.array([0,0,0,1])
+    # curr_orientation[2,:] = np.array([0,0,0,1])
+    # curr_orientation[3,:] = np.array([0,0,0,1])
     joint_pose = p.calculateInverseKinematics2(digit_id, digit_eff_idxs,
                                                     marker_positions,
                                                     curr_orientation,
@@ -209,20 +211,23 @@ for i in range(p.getNumJoints(humanoid_id)):
         p.setCollisionFilterPair(humanoid_id, digit_id, i, j, 0)
     # for j in range(p.getNumJoints(humanoid_ids[0])):
     #     p.setCollisionFilterPair(humanoid_ids[0], digit_id, i, j, 0)
-# for i in range(28):
+joint_types = {0: p.JOINT_REVOLUTE, 1: p.JOINT_PRISMATIC, 2: p.JOINT_SPHERICAL, 3: p.JOINT_PLANAR, 4: p.JOINT_FIXED}
+for i in range(29):
+    info = p.getJointInfo(digit_id, i)
+    print(info[12], info[1], joint_types[info[2]])
 #     print(i, p.getBodyInfo(digit_id, i))
 markers = None
 count = 0
 digit_dofs = retarget_humanoid_to_digit(dof_pos[idx].cpu().numpy())*0
-digit_dofs[9] = 1.4
-digit_dofs[11] = 1.7
-digit_dofs[21] = -0.7
-digit_dofs[14] = -0.4
-digit_dofs[0] = 0.4
+# digit_dofs[9] = 1.4
+# digit_dofs[11] = 1.7
+# digit_dofs[21] = -1.7
+# digit_dofs[14] = -0.4
+# digit_dofs[0] = 0.4
 
 p.setJointMotorControlArray(digit_id, list(mapping.keys()), p.POSITION_CONTROL, targetPositions=digit_dofs)
 humanoid_eff = [14, 21, 31, 41]
-digit_eff = [26, 12, 20, 6]
+digit_eff = [26, 12, 21, 7]
 count = 0
 for digit_eff_id, humanoid_eff_id in zip(digit_eff, humanoid_eff):
     print(p.getJointInfo(digit_id, digit_eff_id), p.getJointInfo(humanoid_id, humanoid_eff_id))
@@ -231,11 +236,72 @@ p.resetBasePositionAndOrientation(digit_id, root_pos[idx].cpu().numpy()+np.array
 # p.resetBasePositionAndOrientation(franka_id, np.array([0.5,-1,0.0]), [0,0,0,1])
 p.createConstraint(digit_id, -1, plane_id, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], root_pos[idx].cpu().numpy()+np.array([0,-1,0.5]),[0,0,0,1],root_rot[idx].cpu().numpy())
 p.createConstraint(humanoid_id, -1, plane_id, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], root_pos[idx].cpu().numpy()+np.array([0,0,0.05]),[0,0,0,1],root_rot[idx].cpu().numpy())
+#kness constraints
+global_com_knee_l = np.array(p.getLinkState(digit_id, 4)[4:6])
+global_com_knee_r = np.array(p.getLinkState(digit_id, 18)[4:6])
+global_com_tarsus_l = np.array(p.getLinkState(digit_id, 5)[4:6])
+global_com_tarsus_r = np.array(p.getLinkState(digit_id, 19)[4:6])
+global_com_toe_l = np.array(p.getLinkState(digit_id, 6)[4:6])
+global_com_toe_r = np.array(p.getLinkState(digit_id, 20)[4:6])
+
+rknee_offset = np.array([-0.02, 0.1, 0.0])
+lknee_offset = np.array([-0.02, -0.1, 0.0])
+rtarsus_offset2 = np.array([-0.1,0.01,0])
+ltarsus_offset2 = np.array([-0.1,-0.01,0])
+rtoe_offset = np.array([-0.049,0.01,0.0])
+rtarsus_offset = np.array([0.11,0.085,0])
+ltoe_offset = np.array([-0.049,-0.01,0.0])
+ltarsus_offset = np.array([0.11,-0.085,0])
+
+local_com_knee_l = np.array(p.getLinkState(digit_id, 4)[2:4])
+local_com_knee_r = np.array(p.getLinkState(digit_id, 18)[2:4])
+local_com_tarsus_l = np.array(p.getLinkState(digit_id, 5)[2:4])
+local_com_tarsus_r = np.array(p.getLinkState(digit_id, 19)[2:4])
+local_com_toe_l = np.array(p.getLinkState(digit_id, 6)[2:4])
+local_com_toe_r = np.array(p.getLinkState(digit_id, 20)[2:4])
+
+com2offset_knee_l = p.multiplyTransforms(*p.invertTransform(*local_com_knee_l),lknee_offset,[0,0,0,1])
+com2offset_tarsus2_l = p.multiplyTransforms(*p.invertTransform(*local_com_tarsus_l),ltarsus_offset2,[0,0,0,1])
+com2offset_knee_r = p.multiplyTransforms(*p.invertTransform(*local_com_knee_r),rknee_offset,[0,0,0,1])
+com2offset_tarsus2_r = p.multiplyTransforms(*p.invertTransform(*local_com_tarsus_r),rtarsus_offset2,[0,0,0,1])
+
+com2offset_toe_l = p.multiplyTransforms(*p.invertTransform(*local_com_toe_l),ltoe_offset,[0,0,0,1])
+com2offset_tarsus_l = p.multiplyTransforms(*p.invertTransform(*local_com_tarsus_l),ltarsus_offset,[0,0,0,1])
+com2offset_toe_r = p.multiplyTransforms(*p.invertTransform(*local_com_toe_r),rtoe_offset,[0,0,0,1])
+com2offset_tarsus_r = p.multiplyTransforms(*p.invertTransform(*local_com_tarsus_r),rtarsus_offset,[0,0,0,1])
+
+p.addUserDebugLine(p.multiplyTransforms(global_com_knee_r[0], global_com_knee_r[1],rknee_offset,[0,0,0,1])[0] ,
+                p.multiplyTransforms(global_com_tarsus_r[0], global_com_tarsus_r[1],rtarsus_offset2,[0,0,0,1])[0], [1,0,0])
+
+p.addUserDebugLine(p.multiplyTransforms(global_com_toe_r[0], global_com_toe_r[1],rtoe_offset,[0,0,0,1])[0] ,
+                p.multiplyTransforms(global_com_tarsus_r[0], global_com_tarsus_r[1],rtarsus_offset,[0,0,0,1])[0], [1,0,0])
+
+c1 = p.createConstraint(digit_id, 4, digit_id, 5, p.JOINT_POINT2POINT, [0,0,0], com2offset_knee_l,com2offset_tarsus2_l)
+c2 = p.createConstraint(digit_id, 5, digit_id, 6, p.JOINT_POINT2POINT, [0,0,0], com2offset_tarsus_l, com2offset_toe_l)
+c3 = p.createConstraint(digit_id, 18, digit_id, 19, p.JOINT_POINT2POINT, [0,0,0], com2offset_knee_r,com2offset_tarsus2_r)
+c4 = p.createConstraint(digit_id, 19, digit_id, 20, p.JOINT_POINT2POINT, [0,0,0], com2offset_tarsus_r, com2offset_toe_r)
+p.changeConstraint(c1, maxForce=1000)
+p.changeConstraint(c2, maxForce=1000)
+p.changeConstraint(c3, maxForce=1000)
+p.changeConstraint(c4, maxForce=1000)
+
+
+# c2 = p.createConstraint(digit_id, 12, digit_id, 14, p.JOINT_POINT2POINT, [0,0,0], [-0.02-0.04, 0.1+0.04, 0.0],[-0.1,0.01-0.029,0])
+# toe constraints
+# c3 =p.createConstraint(digit_id, 6, digit_id, 7, p.JOINT_POINT2POINT, [0,0,0], [0.11,-0.085+0.029,0],[-0.049, -0.01,0.0])
+# c4 = p.createConstraint(digit_id, 14, digit_id, 15, p.JOINT_POINT2POINT, [0,0,0], [0.11,0.085-0.029,0],[-0.049,0.01,0.0])
+# p.setConstraintEnable(c1, 1)
+# p.setConstraintEnable(c2, 1)
+# p.setConstraintEnable(c3, 1)
+# p.setConstraintEnable(c4, 1)
+
 retargetted_poses = []
 body_orientations = []
 error = []
+time.sleep(5)
 while True:
     # idx +=1
+    # time.sleep(0.1)
     if idx >= len(root_pos)-1000:
         idx = 0
         break
@@ -265,11 +331,18 @@ while True:
             pos,_ = p.getLinkState(digit_id, digit_eff[i])[4:6]
             p.resetBasePositionAndOrientation(marker, pos, [0,0,0,1])
         if get_error(markers_digit, digit_eff, digit_id).sum()<0.0001:
+            # digit_dofs = 
             digit_dofs = retarget_humanoid_to_digit_ik([p.getBasePositionAndOrientation(marker)[0] for marker in markers_humanoid], 
                                                     digit_eff,
                                                     digit_id,
                                                     p.getJointStates(digit_id,[i for i in range(p.getNumJoints(digit_id)) if p.getJointInfo(digit_id, i)[3]>-1])[0])
             numJoints = p.getNumJoints(digit_id)
+            # for i in range(numJoints):
+            #     jointInfo = p.getJointInfo(digit_id, i)
+            #     qIndex = jointInfo[3]
+            #     if qIndex > -1:
+            #         # print(i, qIndex, digit_dofs[qIndex-7])
+            #             p.resetJointState(digit_id,i,digit_dofs[qIndex-7])
             if get_error(markers_digit, digit_eff, digit_id).sum()<0.00001:
                 for i in range(numJoints):
                     jointInfo = p.getJointInfo(digit_id, i)
@@ -278,17 +351,19 @@ while True:
                         # print(i, qIndex, digit_dofs[qIndex-7])
                             p.resetJointState(digit_id,i,digit_dofs[qIndex-7])
             retargetted_poses.append(np.concatenate((root_pos[idx].cpu().numpy(),root_rot[idx].cpu().numpy(), digit_dofs)))
+            # print(retargetted_poses[0])
+            # assert False
             body_orientations.append({p.getJointInfo(digit_id, digit_eff_idx)[12].decode():p.getLinkState(digit_id, digit_eff_idx)[5] for digit_eff_idx in range(30)})
             # print("link names:", [p.getJointInfo(digit_id, i)[12].decode() for i in range(p.getNumJoints(digit_id))])
             # print(orientations)
             error.append(get_error(markers_digit, digit_eff, digit_id))
             # print("error:",error[-1])
         idx +=1
-
+    # time.sleep(0.01)
 # np.save("retargeted_poses_digit_v3.npy", retargetted_poses)
 np.save("retargetted_digit_body_orientations.npy", body_orientations)
 error = np.array(error)**2
-np.save("error_digit_v2.npy", error)
+# np.save("error_digit_v2.npy", error)
 fig, axes = plt.subplots(nrows=2, ncols=2)
 axes[0,0].plot(error[:,0])
 axes[0,1].plot(error[:,1])

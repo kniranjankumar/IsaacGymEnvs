@@ -32,4 +32,4 @@ outputs/
 *.hydra*
 /isaacgymenvs/wandb
 isaacgymenvs/*.npy
-isaacgymenvs/y
+

@@ -418,7 +418,43 @@ def get_cost_from_q(q):
     gym.sync_frame_time(sim)
     # time.sleep(0.5)
     return diff.length()**2
+rtarsus_transform = gymapi.Transform.from_buffer(robot_rb_pose[14])
+rtoe_transform = gymapi.Transform.from_buffer(robot_rb_pose[15])
+rtoe_point_ = gymapi.Vec3(-0.049,0.01,0.0)
+rtarsus_point_ = gymapi.Vec3(0.11,0.085,0)
+rtoe_point = rtoe_transform.transform_point(rtoe_point_)
+rtarsus_point = rtarsus_transform.transform_point(rtarsus_point_)
+gym.add_lines(viewer, envs[0], 1,[rtarsus_point.x, rtarsus_point.y, rtarsus_point.z, rtoe_point.x, rtoe_point.y, rtoe_point.z], [1.0,0.0,0.0])
+rod_length = (rtoe_point-rtarsus_point).length()
+print("Toe-tarsus rod length", rod_length)
 
+ltarsus_transform = gymapi.Transform.from_buffer(robot_rb_pose[6])
+ltoe_transform = gymapi.Transform.from_buffer(robot_rb_pose[7])
+ltoe_point_ = gymapi.Vec3(-0.049,-0.01,0.0)
+ltarsus_point_ = gymapi.Vec3(0.11,-0.085,0)
+ltoe_point = ltoe_transform.transform_point(ltoe_point_)
+ltarsus_point = ltarsus_transform.transform_point(ltarsus_point_)
+gym.add_lines(viewer, envs[0], 1,[ltarsus_point.x, ltarsus_point.y, ltarsus_point.z, ltoe_point.x, ltoe_point.y, ltoe_point.z], [1.0,0.0,0.0])
+
+
+# tarsus_transform = gymapi.Transform.from_buffer(robot_rb_pose[14])
+rknee_transform = gymapi.Transform.from_buffer(robot_rb_pose[12])
+rknee_point_ = gymapi.Vec3(-0.02,0.1,0.0)
+rtarsus_point2_ = gymapi.Vec3(-0.1,0.01,0)
+rknee_point = rknee_transform.transform_point(rknee_point_)
+rtarsus_point2 = rtarsus_transform.transform_point(rtarsus_point2_)
+gym.add_lines(viewer, envs[0], 1,[rtarsus_point2.x, rtarsus_point2.y, rtarsus_point2.z, rknee_point.x, rknee_point.y, rknee_point.z], [1.0,0.0,0.0])
+rod_length = (rknee_point-rtarsus_point).length()
+print("Knee-tarsus rod length", rod_length)
+
+lknee_transform = gymapi.Transform.from_buffer(robot_rb_pose[4])
+lknee_point_ = gymapi.Vec3(-0.02,-0.1,0.0)
+ltarsus_point2_ = gymapi.Vec3(-0.1,-0.01,0)
+lknee_point = lknee_transform.transform_point(lknee_point_)
+ltarsus_point2 = ltarsus_transform.transform_point(ltarsus_point2_)
+gym.add_lines(viewer, envs[0], 1,[ltarsus_point2.x, ltarsus_point2.y, ltarsus_point2.z, lknee_point.x, lknee_point.y, lknee_point.z], [1.0,0.0,0.0])
+
+# assert False
 while not gym.query_viewer_has_closed(viewer):
 
     # step the physics and refresh tensors
