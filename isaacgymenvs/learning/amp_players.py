@@ -70,7 +70,7 @@ class AMPPlayerContinuous(common_player.CommonPlayer):
 
     def _build_net_config(self):
         config = super()._build_net_config()
-        config['amp_input_shape'] = self.env_info['amp_observation_space'].shape
+        config['amp_input_shape'] = self.env.amp_observation_space.shape
         return config
 
     def _amp_debug(self, info):

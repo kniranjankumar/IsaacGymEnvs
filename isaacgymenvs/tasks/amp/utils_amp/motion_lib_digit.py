@@ -35,19 +35,19 @@ from ..poselib.poselib.core.rotation3d import *
 from isaacgym.torch_utils import *
 from isaacgymenvs.utils.torch_jit_utils import *
 
-from isaacgymenvs.tasks.amp.digit_amp_base import DOF_BODY_IDS, DOF_OFFSETS, joint_frame_rot, shuffle_idxs
+from isaacgymenvs.tasks.amp.digit_amp_base import DOF_BODY_IDS, DOF_OFFSETS, joint_frame_rot, shuffle_idxs, KEY_BODY_NAMES
 
 
 class MotionLib():
     def __init__(self, motion_file, num_dofs, key_body_ids, device):
         self._num_dof = num_dofs
-        self._key_body_ids = key_body_ids
+        self._key_body_ids = None
         self._device = device
+        joint_r = torch.stack(list(joint_frame_rot.values()), dim=0).to(self._device)
+        self.joint_r_q = quat_conjugate(quat_from_euler_xyz(joint_r[:, 0], joint_r[:, 1], joint_r[:, 2]))
         self._load_motions(motion_file)
 
         self.motion_ids = torch.arange(len(self._motions), dtype=torch.long, device=self._device)
-        joint_r = torch.stack(list(joint_frame_rot.values()), dim=0).to(self._device)
-        self.joint_r_q = quat_conjugate(quat_from_euler_xyz(joint_r[:, 0], joint_r[:, 1], joint_r[:, 2]))
 
         return
 
@@ -85,7 +85,7 @@ class MotionLib():
     def get_motion_state(self, motion_ids, motion_times):
         n = len(motion_ids)
         num_bodies = self._get_num_bodies()
-        num_key_bodies = self._key_body_ids.shape[0]
+        num_key_bodies = len(KEY_BODY_NAMES)
 
         root_pos0 = np.empty([n, 3])
         root_pos1 = np.empty([n, 3])
@@ -107,6 +107,7 @@ class MotionLib():
         frame_idx0, frame_idx1, blend = self._calc_frame_blend(motion_times, motion_len, num_frames, dt)
 
         unique_ids = np.unique(motion_ids)
+        self._key_body_ids = torch.tensor([self._motions[unique_ids[0]].skeleton_tree.node_names.index(id) for id in KEY_BODY_NAMES], device=self._device)
         for uid in unique_ids:
             ids = np.where(motion_ids == uid)
             curr_motion = self._motions[uid]
@@ -151,7 +152,8 @@ class MotionLib():
         
         local_rot = slerp(local_rot0, local_rot1, torch.unsqueeze(blend, axis=-1))
         dof_pos = self._local_rotation_to_dof(local_rot)
-        root_pos[:,2] = 1.0
+        root_pos[:,2] = 0.87
+        root_vel[:,0] = 1.0
         return root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos#, local_rot
 
     def _load_motions(self, motion_file):
@@ -256,7 +258,8 @@ class MotionLib():
             local_rot0 = motion.local_rotation[f]
             local_rot1 = motion.local_rotation[f + 1]
             frame_dof_vel = self._local_rotation_to_dof_vel(local_rot0, local_rot1, dt)
-            frame_dof_vel = frame_dof_vel
+            # frame_dof_vel = ((self._local_rotation_to_dof(local_rot1.unsqueeze(0).to("cuda:0"))-
+            #                   self._local_rotation_to_dof(local_rot0.unsqueeze(0).to("cuda:0")))/dt)[0]
             dof_vels.append(frame_dof_vel)
         
         dof_vels.append(dof_vels[-1])
@@ -286,7 +289,9 @@ class MotionLib():
         shuffled_dof[:,2] *= -1 # invert hip flexion left
         shuffled_dof[:,9] *= -1 # invert hip flexion right
         shuffled_dof[:,15] *= -1 # invert shoulder pitch left
-        shuffled_dof[:,19] *= -1 # invert shoulder pitch right
+        shuffled_dof[:,19] *= 1 # invert shoulder pitch right
+        # shuffled_dof[:,14] *= -1 # invert shoulder pitch left
+        # shuffled_dof[:,18] *= 0 # invert shoulder pitch right
 
         return shuffled_dof
 
