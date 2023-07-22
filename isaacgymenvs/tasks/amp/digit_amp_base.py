@@ -71,12 +71,10 @@ joint_frame_rot = {         "hip_abduction_left": [1.57079632679, -1.1955506, -1
                             "shin_to_tarsus_right": [0, 0, -1.7976891],
                             "toe_pitch_joint_right": [0, 0, -1.1956],
                             "toe_roll_joint_right": [0, 1.57079632679, 0],
-                            
+                            "shoulder_roll_joint_right": [1.57079632679, -1.3962633, -1.57079632679],
                             "shoulder_cap_joint_right": [0.001, -0.12, 0.4],
                             "waist_cap_joint_right": [-0.001, -0.09, 0.0],
                             "waist_cap_joint_left": [-0.001, 0.09, 0.0],
-                            
-                            "shoulder_roll_joint_right": [1.57079632679, -1.3962633, -1.57079632679],
                             "shoulder_pitch_joint_right": [-1.57079632679, 0.785398163397, 0.2792527],
                             "shoulder_yaw_joint_right": [-1.57079632679, 0 ,0],
                             "elbow_joint_right": [-1.57079632679, -0.3926991, 0],
@@ -111,7 +109,8 @@ joint_order = ['hip_abduction_left',
                'elbow_joint_right']
 shuffle_idxs = [list(joint_frame_rot.keys()).index(joint) for joint in joint_order]
 joint_frame_rot = {k: torch.tensor(v) for k, v in joint_frame_rot.items()}
-NUM_OBS = 13 + 22 + 22 + 12 # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
+# NUM_OBS = 13 + 22 + 22 + 12 
+NUM_OBS = sum([1, 6, 3, 3, 22, 22, 12])# [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
 NUM_ACTIONS = 22
 
 
@@ -168,7 +167,7 @@ class DigitAMPBase(VecTask):
         self._initial_root_states = self._root_states.clone()
         self._initial_root_states[:, 7:13] = 0
         self._initial_root_states[:,3:6] = 0
-        self._initial_root_states[:,2]=0.90
+        self._initial_root_states[:,2]=0.93
         
 
         # create some wrapper tensors for different slices
@@ -570,9 +569,9 @@ class DigitAMPBase(VecTask):
         forces[:, 4, :] = lknee_tarsus_rod_force.unsqueeze(1)*lknee_tarsus_rod_direction
         forces[:, 14, :] = -forces[:, 12, :]
         forces[:, 6, :] = -forces[:, 4, :]
-        self.gym.apply_rigid_body_force_at_pos_tensors(self.sim, gymtorch.unwrap_tensor(forces), 
-                                                  gymtorch.unwrap_tensor(force_positions), 
-                                                  gymapi.LOCAL_SPACE)
+        # self.gym.apply_rigid_body_force_at_pos_tensors(self.sim, gymtorch.unwrap_tensor(forces), 
+        #                                           gymtorch.unwrap_tensor(force_positions), 
+        #                                           gymapi.LOCAL_SPACE)
 
         # self.gym.apply_rigid_body_force_at_pos_tensors(self.sim, gymtorch.unwrap_tensor(forces), gymtorch.unwrap_tensor(force_positions), gymapi.ENV_SPACE)
         

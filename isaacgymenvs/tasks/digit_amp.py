@@ -200,7 +200,7 @@ class DigitAMP(DigitAMPBase):
                             root_pos=root_pos, 
                             root_rot=root_rot, 
                             dof_pos=dof_pos, 
-                            root_vel=root_vel*0, 
+                            root_vel=root_vel, 
                             root_ang_vel=root_ang_vel, 
                             dof_vel=dof_vel)
 

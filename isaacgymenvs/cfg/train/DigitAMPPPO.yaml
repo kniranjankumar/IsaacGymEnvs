@@ -19,7 +19,7 @@ params:
           name: default
         sigma_init:
           name: const_initializer
-          val: -1.9
+          val: -2.9
         fixed_sigma: True
         learn_sigma: False
 
@@ -83,9 +83,9 @@ params:
     amp_replay_keep_prob: 0.01
     amp_batch_size: 512
     amp_minibatch_size: 4096
-    disc_coef: 1
+    disc_coef: 5
     disc_logit_reg: 0.05
-    disc_grad_penalty: 5
+    disc_grad_penalty: 10
     disc_reward_scale: 2
     disc_weight_decay: 0.0001
     normalize_amp_input: True
