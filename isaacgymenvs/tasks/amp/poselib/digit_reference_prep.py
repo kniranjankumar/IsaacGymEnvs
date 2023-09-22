@@ -12,7 +12,11 @@ import numpy as np
 from poselib.core.rotation3d import *
 from poselib.skeleton.skeleton3d import SkeletonTree, SkeletonState, SkeletonMotion
 from poselib.visualization.common import plot_skeleton_state, plot_skeleton_motion_interactive, plot_skeleton_states
+import argparse
 
+parser = argparse.ArgumentParser()
+parser.add_argument("unprocessed_motion_file", help="path to the file", type=str, default="digit_state_hop.npy")
+args = parser.parse_args()
 
 # In[2]:
 
@@ -67,36 +71,40 @@ zero_pose = SkeletonState.zero_pose(skel_tree)
 
 # In[11]:
 
+filename = args.unprocessed_motion_file
+x_np = np.load("/home/dan/Projects/dynamic_motion_imitation/IsaacGymEnvs/isaacgymenvs/"+filename, allow_pickle=True)
 
-x_np = np.load("/home/dan/Projects/dynamic_motion_imitation/IsaacGymEnvs/isaacgymenvs/retargetted_digit_body_orientations.npy", allow_pickle=True)
-tensor_backend = {
-        "arr": x_np,
-        "context": {
-            "dtype": x_np.dtype.name
-        }}
 idx = 0
 rot = []
-for x_np_ in x_np:
+translation_array = torch.zeros([x_np.shape[0],3])
+
+for (x_np_,translation, rotation,_) in x_np:
     rot_dict = x_np_
-    rot_dict["torso"] = np.array([0,0,0,1])
+    rot_dict["torso"] = rotation
     rot_list = np.array([rot_dict[name] for name in node_names])
     rot.append(torch.from_numpy(rot_list))
+    translation_array[idx,:] = torch.tensor(translation+np.array([0,0,-0.2]))
+    print(translation_array[idx,:])
+    idx +=1
 motion_rot = torch.stack(rot,dim=0)
     
 
-translation = torch.zeros([x_np.shape[0],3])
-translation[:,0]=torch.linspace(0,2,x_np.shape[0])
-translation[:,1]=0
-translation[:,2]=1.0
+# translation[:,0]=torch.linspace(0,2,x_np.shape[0])
+# translation[:,1]=0
+# translation[:,2]=1.0
 
 walk_pose =  SkeletonState.from_rotation_and_root_translation(
                          skeleton_tree=skel_tree,
                          r=motion_rot,
-                         t=translation,
+                         t=translation_array,
                          is_local=False
                      )
 walk_motion = SkeletonMotion.from_skeleton_state(walk_pose,200)
-walk_motion_cropped = walk_motion.crop(0, 350)
-walk_motion_cropped.to_file("/home/dan/Projects/dynamic_motion_imitation/IsaacGymEnvs/assets/amp/digit_motions/digit_walk.npy")
+filename = filename.split("_")
+filename = "_".join([filename[0],filename[-1]])
+# walk_motion_cropped = walk_motion.crop(0, 350)
+walk_motion_cropped = walk_motion
+walk_motion_cropped.to_file("/home/dan/Projects/dynamic_motion_imitation/IsaacGymEnvs/assets/amp/digit_motions/"+filename)
 # plot_skeleton_motion_interactive(walk_motion)
+print(walk_motion_cropped.global_translation[0])
 

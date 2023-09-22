@@ -10,233 +10,222 @@ import pybullet_data
 import sys
 import time
 import matplotlib.pyplot as plt
+import pybullet_data
+import argparse
+
+# parser = argparse.ArgumentParser()
+# parser.add_argument("motion_file", help="path to the motion file", type=str, default="amp_humanoid_hop.npy")
+# args = parser.parse_args()
+
+# motion_file = args.motion_file
+motion_file = "amp_humanoid_hop.npy"
+class DebugDuckie:
+    def __init__(self, position, body_id, link_id):
+        self.position = position
+        self.body_id = body_id
+        self.link_id = link_id
+        self.duck_id = p.loadURDF("duck_vhacd.urdf",self.position,[0,0,0,1], useFixedBase=True, globalScaling=5.0)
+        self.base_rotation = p.getQuaternionFromEuler([np.pi/2,0,np.pi])
+        orientation = p.getLinkState(self.body_id, self.link_id)[5]
+        _, duckie_orientation = p.multiplyTransforms([0,0,0], orientation, [0,0,0], self.base_rotation)
+        p.resetBasePositionAndOrientation(self.duck_id, self.position, duckie_orientation)
 
 
-def retarget_humanoid_to_digit(humanoid_dof):
-    joint_mapping_digit2humanoid = [21,23,22,24,25,26,25,14,16,15,17,18,19,18,10,11,12,13,6,7,8,9] 
-    digit2humanoid_offset = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-    digit2humanoid_direction = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-    # right hand
-    digit2humanoid_direction[18]*=-1
-    digit2humanoid_direction[19]*=-1
-    digit2humanoid_direction[20]*=-1
-    digit2humanoid_direction[21]*=-1
-    # left hand
-    digit2humanoid_direction[14]*=-1
-    # digit2humanoid_direction[15]*=-1
-    digit2humanoid_direction[16]*=-1
-    # digit2humanoid_direction[17]*=1
-    # right leg
-    digit2humanoid_direction[7]*=-1
-    digit2humanoid_direction[8]*=-1
-    digit2humanoid_direction[9]*=-1
-    digit2humanoid_direction[10]*=1
-    # digit2humanoid_direction[13]*=-1
-    # digit2humanoid_direction[11]*=-1
     
-    # left leg
-    digit2humanoid_direction[0]*=-1
-    digit2humanoid_direction[1]*=-1 
-    # digit2humanoid_direction[2]*=-1
-    digit2humanoid_direction[3]*=-1
-    digit2humanoid_direction[5]*=-1
-    # digit2humanoid_direction[5]*=-1
-    
-    # digit2humanoid_direction[0]*=-1
-    # digit2humanoid_direction[4]*=-1
-    
-    digit2humanoid_offset[21] = -1.4
-    digit2humanoid_offset[17] = 1.4
-    digit2humanoid_offset[19] = -0.75
-    digit2humanoid_offset[15] = 0.75
-    digit2humanoid_offset[7] = -0.3
-    digit2humanoid_offset[0] = +0.3
-    digit_dof = np.array(humanoid_dof[joint_mapping_digit2humanoid])*np.array(digit2humanoid_direction)+np.array(digit2humanoid_offset)
-    digit_dof[11] = 0
-    digit_dof[4] = 0
-    return digit_dof
+    def update(self, orientation=None):
+        if orientation is None:
+            orientation = p.getLinkState(self.body_id, self.link_id)[5]
+        _, duckie_orientation = p.multiplyTransforms([0,0,0], orientation, [0,0,0], self.base_rotation)
+        p.resetBasePositionAndOrientation(self.duck_id, self.position, duckie_orientation)
 
+def compute_effector_pos_error(agent_id, body_idxs, ddof_pose, eff_pose_target, initPose=None):
+    joint_body_ids = [digit_body_idx for digit_body_idx in range(30) if p.getJointInfo(digit_id, digit_body_idx)[2]==0]
+    pos, ori = p.getBasePositionAndOrientation(agent_id)
+    if initPose is None:
+        for idx, pose in zip(joint_body_ids, ddof_pose):
+            p.resetJointState(agent_id, idx, pose)
+    else:
+        for idx, dpose, init_pose_ in zip(joint_body_ids, ddof_pose, initPose):
+            p.resetJointState(agent_id, idx, dpose+init_pose_)
+    p.resetBasePositionAndOrientation(agent_id, pos, ori)
+    eff_pos = [p.getLinkState(agent_id, body_idx)[4] for body_idx in body_idxs]
+    eff_pos = np.array(eff_pos)
+    error = np.linalg.norm(eff_pos-eff_pose_target, axis=1)
+    error = np.linalg.norm(error)+ np.linalg.norm(ddof_pose)*0.1 if not initPose is None else 0
+    # print("error", error)
+    return error
 
-def retarget_humanoid_to_digit_ik(marker_positions, digit_eff_idxs, digit_id, initPose):
-    # print("marker_positions", marker_positions, "digit_eff_idxs", digit_eff_idxs)
-    # pos, ori = p.getLinkState(digit_id, digit_eff_idxs[0])[4:6]
-    # pos = marker_positions[2]
-    # print(pos, p.getLinkState(digit_id, digit_eff_idxs[0])[4])
-    # print("gonna IK")
-    # time.sleep(1)
-    curr_orientation = [p.getLinkState(digit_id, digit_eff_idx)[5] for digit_eff_idx in digit_eff_idxs]
-    curr_orientation = np.array(curr_orientation)
-    # curr_orientation[0,:] = np.array([0,0,0,1])
-    # curr_orientation[1,:] = np.array([0,0,0,1])
-    # curr_orientation[2,:] = np.array([0,0,0,1])
-    # curr_orientation[3,:] = np.array([0,0,0,1])
+def retarget_humanoid_to_digit_ik_constrained(marker_positions, marker_orientations, digit_eff_idxs, digit_id, initPose):
+    objective = lambda x: compute_effector_pos_error(digit_id, digit_eff_idxs, x, marker_positions, initPose)
+    # for i in range(10):
+    if initPose is None:
+        initPose_ = [p.getJointState(digit_id, digit_body_idx)[0] for digit_body_idx in range(30) if p.getJointInfo(digit_id, digit_body_idx)[2]==0]
+
+        output = scipy.optimize.minimize(objective, 
+                                       np.array(initPose_), method='SLSQP', jac='3-point', tol=1e-6)#, bounds=[(-1.57,1.57)]*22)
+    else:
+        output = scipy.optimize.minimize(objective, 
+                                       np.array(initPose), method='SLSQP', jac='3-point', tol=1e-6, bounds=[(-0.1,0.1)]*22)
+
+    return output.x
+
+def retarget_humanoid_to_digit_ik(marker_positions, marker_orientations, digit_eff_idxs, digit_id, initPose):
+    # curr_orientation = [p.getLinkState(digit_id, digit_eff_idx)[5] for digit_eff_idx in digit_eff_idxs]
+    # curr_orientation = np.array(curr_orientation)
+    # curr_orientation[2,:] = marker_orientations[2]
+    # curr_orientation[3,:] = marker_orientations[3]
     joint_pose = p.calculateInverseKinematics2(digit_id, digit_eff_idxs,
                                                     marker_positions,
-                                                    curr_orientation,
+                                                    marker_orientations,
                                                     # lowerLimits=[-1]*22,
                                                     # upperLimits=[1]*22,
                                                     restPoses=initPose,
-                                                    solver=p.IK_DLS,
-                                                    maxNumIterations=1000,
-                                                    residualThreshold=1e-8)
-    # time.sleep(1)
-    # print("IK done")
+                                                    # solver=p.IK_DLS,
+                                                    # maxNumIterations=1000,
+                                                    # residualThreshold=1e-8,
+                                                    jointDamping=[0.01]*22)
+    # joint_pose = [0]*p.getNumJoints(digit_id)
     joint_pose = np.array(joint_pose)
-    # joint_pose[:20]=0
-    # joint_pose[27:]=0
-    return  joint_pose
+    # joint_pose*=0
+    joint_pose_left_leg = p.calculateInverseKinematics(digit_id, digit_eff_idxs[3],
+                                                        marker_positions[3],
+                                                        marker_orientations[3],
+                                                        restPoses=initPose)
+    joint_pose_right_leg = p.calculateInverseKinematics(digit_id, digit_eff_idxs[2],
+                                                        marker_positions[2],
+                                                        marker_orientations[2],
+                                                        restPoses=initPose)
+    joint_pose_left_arm = p.calculateInverseKinematics(digit_id, digit_eff_idxs[1],
+                                                        marker_positions[1],
+                                                        marker_orientations[1],
+                                                        restPoses=initPose)
+    joint_pose_right_arm = p.calculateInverseKinematics(digit_id, digit_eff_idxs[0],
+                                                        marker_positions[0],
+                                                        marker_orientations[0],
+                                                        restPoses=initPose)
+    
+    left_leg_joints = ['hip_abduction_left', 'hip_rotation_left', 'hip_flexion_left', 'knee_joint_left', 'shin_to_tarsus_left', 'toe_pitch_joint_left', 'toe_roll_joint_left']
+    right_leg_joints = ['hip_abduction_right', 'hip_rotation_right', 'hip_flexion_right', 'knee_joint_right', 'shin_to_tarsus_right', 'toe_pitch_joint_right', 'toe_roll_joint_right']
+    left_arm_joints = ['shoulder_roll_joint_left',  'shoulder_pitch_joint_left', 'shoulder_yaw_joint_left', 'elbow_joint_left']
+    right_arm_joints = ['shoulder_roll_joint_right', 'shoulder_pitch_joint_right', 'shoulder_yaw_joint_right', 'elbow_joint_right']
+    # right_arm_joints = ['hip_abduction_right', 'hip_rotation_right', 'hip_flexion_right', 'knee_joint_right', 'knee_to_shin_right', 'shin_to_tarsus_right', 'toe_pitch_joint_right', 'toe_roll_joint_right']
+    joints = [p.getJointInfo(digit_id, i)[1].decode() for i in range(p.getNumJoints(digit_id)) if p.getJointInfo(digit_id, i)[3] > -1]
+    # print(joints)
+    left_leg_idxs = [joints.index(name) for name in left_leg_joints]
+    right_leg_idxs = [joints.index(name) for name in right_leg_joints]
+    left_arm_idxs = [joints.index(name) for name in left_arm_joints]
+    right_arm_idxs = [joints.index(name) for name in right_arm_joints]
+    # left_leg_idxs = [i for i in range(p.getNumJoints(digit_id)) if p.getJointInfo(digit_id, i)[1].decode() in left_leg_joints]
+    # right_leg_idxs = [i for i in range(p.getNumJoints(digit_id)) if p.getJointInfo(digit_id, i)[1].decode() in right_leg_joints]
+    # left_arm_idxs = [i for i in range(p.getNumJoints(digit_id)) if p.getJointInfo(digit_id, i)[1].decode() in left_arm_joints]
+    # right_arm_idxs = [i for i in range(p.getNumJoints(digit_id)) if p.getJointInfo(digit_id, i)[1].decode() in right_arm_joints]
+    # print(left_leg_idxs, right_leg_idxs,left_arm_idxs, right_arm_idxs, len(joint_pose))
+    # print(len(joint_pose_left_leg), len(joint_pose_right_leg))
+    
+    # print(np.array(joint_pose_leg)-np.array(joint_pose))
+    joint_pose_left_leg = np.array(joint_pose_left_leg)
+    joint_pose_right_leg = np.array(joint_pose_right_leg)
+    joint_pose_left_arm = np.array(joint_pose_left_arm)
+    joint_pose_right_arm = np.array(joint_pose_right_arm)
+    
+    joint_pose[right_leg_idxs] = joint_pose_right_leg[right_leg_idxs]
+    joint_pose[left_leg_idxs] = joint_pose_left_leg[left_leg_idxs]
+    # joint_pose[right_arm_idxs] = joint_pose_right_arm[right_arm_idxs]
+    # joint_pose[left_arm_idxs] = joint_pose_left_arm[left_arm_idxs]
+    # print(right_arm_idxs, left_arm_idxs, right_leg_idxs, left_leg_idxs)
+    
+    return  np.array(joint_pose)
 
 def get_error(marker_id, digit_eff_idxs, digit_id):
     eff_pos = [p.getLinkState(digit_id, idx)[4] for idx in digit_eff_idxs]
     eff_pos = np.array(eff_pos)
     marker_positions = np.array([p.getBasePositionAndOrientation(marker)[0] for marker in marker_id])
     return np.linalg.norm(eff_pos-marker_positions, axis=1)
-# def retarget_humanoid_to_franka_ik(marker_positions, franka_eff_idxs, franka_id, initPose):
-#     # print("marker_positions", marker_positions, "digit_eff_idxs", franka_eff_idxs)
-#     # pos, ori = p.getLinkState(franka_id, franka_eff_idxs[0])[4:6]
-#     pos = marker_positions[2]
-#     # print(pos, p.getLinkState(franka_id, franka_eff_idxs[0])[4])
-#     joint_pose = p.calculateInverseKinematics(franka_id, franka_eff_idxs[2],
-#                                                     np.array(pos),
-#                                                     # lowerLimits=[-1]*22,
-#                                                     # upperLimits=[1]*22,
-#                                                     # restPoses=initPose,
-#                                                     solver=p.IK_DLS,
-#                                                     maxNumIterations=100,
-#                                                     residualThreshold=1e-5)
-    return np.array(joint_pose)
 
-def create_markers(humanoid_id, body_idxs, radius=0.05,colors=[[1,0,0,1], [0,1,0,1], [0,0,1,1], [1,1,0,1]]):
+def get_quat_error(quat1,quat2):
+    error_q = p.multiplyTransforms([0,0,0], quat1, [0,0,0], p.invertTransform([0,0,0], quat2)[1])[1]
+    angles = p.getEulerFromQuaternion(error_q)
+    print(angles)
+    return angles
+
+def create_markers(agent_id, body_idxs, radius=0.05,colors=[[1,0,0,1], [0,1,0,1], [0,0,1,1], [1,1,0,1]]):
     markers = []
     for color, body_idx in zip(colors,body_idxs):
-        pos, ori = p.getLinkState(humanoid_id, body_idx)[4:6]
+        pos, ori = p.getLinkState(agent_id, body_idx)[4:6]
         offset = np.array([0,-1,0.2])
         marker = p.createVisualShape(shapeType=p.GEOM_SPHERE, radius=radius, rgbaColor=color)
         marker_id = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=-1, baseVisualShapeIndex=marker, basePosition=np.array(pos)+offset, baseOrientation=ori)
         markers.append(marker_id)
-    return markers
-    
+    return markers   
 
 p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
-# p.setGravity(0,0,-9.81)
 p.setRealTimeSimulation(0)
-# p.setPhysicsEngineParameter(numSolverIterations=150)
-# p.setTimeStep(1./240.)
+
+################################################################################
+########################### Load digit and humanoid ############################
+################################################################################
+
+
 plane_id = p.loadURDF("plane.urdf",[0,0,0],[0,0,0,1])
-digit_id = p.loadURDF("../assets/urdf/DigitRobot/DigitRobot/urdf/digit_model.urdf",[0,0,2.1],[0,0,0,1])
-humanoid_id = p.loadMJCF("../assets/mjcf/amp_humanoid_pybullet.xml")[0]
-# franka_id = p.loadURDF("../assets/urdf/franka_description/robots/franka_panda.urdf",[2,0,0],[0,0,0,1])
-# humanoid_id = humanoid_ids[1]
-# print("humanoid_ids", humanoid_ids)
-motion_file = "/home/dan/Projects/dynamic_motion_imitation/IsaacGymEnvs/assets/amp/motions/amp_humanoid_walk.npy"
-mocap = MotionLib(motion_file=motion_file, 
+digit_id = p.loadURDF("/home/dan/Projects/dynamic_motion_imitation/IsaacGymEnvs/assets/urdf/DigitRobot/DigitRobot/urdf/digit_model.urdf",[0,-1,1.1],[0,0,0,1])
+# digit_id = p.loadURDF("../assets/urdf/digit_description-main/urdf/digit_float.urdf",[0,-1,1.1],[0,0,0,1])
+humanoid_id = p.loadMJCF("/home/dan/Projects/dynamic_motion_imitation/IsaacGymEnvs/assets/mjcf/amp_humanoid_pybullet.xml")[0]
+
+humanoid_eff_names = ["right_hand", "left_hand", "right_foot", "left_foot"]
+humanoid_bodies = [p.getJointInfo(humanoid_id, i)[12].decode() for i in range(p.getNumJoints(humanoid_id))]
+humanoid_eff = [humanoid_bodies.index(name) for name in humanoid_eff_names]
+humanoid_joints = [i for i in range(p.getNumJoints(humanoid_id)) if p.getJointInfo(humanoid_id, i)[2] != p.JOINT_FIXED]
+
+digit_eff_names = ["right_hand", "left_hand", "right_toe_roll", "left_toe_roll"]
+digit_bodies = [p.getJointInfo(digit_id, i)[12].decode() for i in range(p.getNumJoints(digit_id))]
+digit_eff = [digit_bodies.index(name) for name in digit_eff_names]
+
+for joint in range(p.getNumJoints(digit_id)):
+    p.setJointMotorControl2(digit_id, joint, p.POSITION_CONTROL, targetVelocity=1, force=10)
+for joint in range(p.getNumJoints(humanoid_id)):
+        p.setJointMotorControl2(humanoid_id, joint, p.POSITION_CONTROL, targetVelocity=1, force=10)
+p.setJointMotorControlArray(digit_id, [i for i in range(p.getNumJoints(digit_id))], p.POSITION_CONTROL, targetPositions=[0]*p.getNumJoints(digit_id))
+
+
+################################################################################
+#################################### Load mocap ################################
+################################################################################
+# motion_file = "amp_humanoid_run.npy"
+motion_file_path = "/home/dan/Projects/dynamic_motion_imitation/IsaacGymEnvs/assets/amp/motions/"+motion_file
+mocap = MotionLib(motion_file=motion_file_path, 
                                      num_dofs=28,
                                      key_body_ids=torch.tensor([5,8,11,14],device=torch.device("cuda:0")), 
                                      device=torch.device("cuda:0"))
-length = 3000
+length = 2700
+dt = 0.005
 print(mocap, mocap.num_motions(),mocap._motion_lengths[0])
 motion_times0 = mocap.sample_time(np.array([0]))
-motion_times0 = [1.0]
+motion_times0 = [0.0]
 print("motion_time 0:",motion_times0)
 motion_times = np.expand_dims(motion_times0, axis=-1)
-time_steps = 0.005 * np.arange(0, length)
+length = int(mocap._motion_lengths[0]/dt)
+time_steps = dt * np.arange(0, length)
 motion_times = motion_times + time_steps
 motion_ids = np.array([0]*length).flatten()
 motion_times = motion_times.flatten()
 
 frame = mocap.get_motion_state(np.array([0]*length), motion_times)
 root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos = frame
-digit_dofs = retarget_humanoid_to_digit(dof_pos[0].cpu().numpy())
 print("num frames", len(root_pos))
 
-mapped_joints = [
-        "hip_abduction_left",
-        "hip_rotation_left",
-        "hip_flexion_left",
-        "knee_joint_left",
-        "shin_to_tarsus_left",
-        "toe_pitch_joint_left",
-        "toe_roll_joint_left",
-        "hip_abduction_right",
-        "hip_rotation_right",
-        "hip_flexion_right",
-        "knee_joint_right",
-        "shin_to_tarsus_right",
-        "toe_pitch_joint_right",
-        "toe_roll_joint_right",
-        "shoulder_roll_joint_left",
-        "shoulder_pitch_joint_left",
-        "shoulder_yaw_joint_left",
-        "elbow_joint_left",
-        "shoulder_roll_joint_right",
-        "shoulder_pitch_joint_right",
-        "shoulder_yaw_joint_right",
-        "elbow_joint_right"
-]
-pybullet_joints = [(p.getJointInfo(digit_id, i)[1]).decode() for i in range(p.getNumJoints(digit_id))]
-mapping = {}
-humanoid_joints = [0,1,2,4,5,6,8,9,10,12,15,16,17,19,22,23, 24, 26, 28, 29, 30, 32, 33, 34, 36, 38, 39, 40]
-for i in range(len(mapped_joints)):
-    mapping[pybullet_joints.index(mapped_joints[i])] = i
-print(mapping)
-count = 0
-for joint in range(p.getNumJoints(digit_id)):
-    if p.getJointInfo(digit_id, joint)[2]==0:
-        print(count, p.getJointInfo(digit_id, joint)[1])
-        count+=1
-    p.setJointMotorControl2(digit_id, joint, p.POSITION_CONTROL, targetVelocity=1, force=10)
-for joint in range(p.getNumJoints(humanoid_id)):
-        # print(joint, p.getJointInfo(humanoid_id, joint))
-        p.setJointMotorControl2(humanoid_id, joint, p.POSITION_CONTROL, targetVelocity=1, force=10)
-# for joint in range(p.getNumJoints(franka_id)):
-#         # print(joint, p.getJointInfo(humanoid_id, joint))
-#         p.setJointMotorControl2(franka_id, joint, p.POSITION_CONTROL, targetVelocity=1, force=10)
-idx = 0
-# collisionFilterGroup = 0x2
-# collisionFilterMask = 0x2
-# for i in range(p.getNumJoints(humanoid_id)):
-#     p.setCollisionFilterGroupMask(humanoid_id,i,collisionFilterGroup,collisionFilterMask)
 
-# for i in range(p.getNumJoints(humanoid_ids[0])):
-#     p.setCollisionFilterGroupMask(humanoid_ids[0],i,collisionFilterGroup,collisionFilterMask)
+############################################################################################################
+###################################### Mount humanoid and digit to rack ####################################
+############################################################################################################
 
+p.createConstraint(digit_id, -1, plane_id, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], root_pos[0].cpu().numpy()+np.array([0,-1,0.4]),[0,0,0,1],root_rot[0].cpu().numpy())
+p.createConstraint(humanoid_id, -1, plane_id, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], root_pos[0].cpu().numpy()+np.array([0,0,0.15]),[0,0,0,1],root_rot[0].cpu().numpy())
 
-# collisionFilterGroup2 = 0x1
-# collisionFilterMask2 = 0x1 
-# for i in range(p.getNumJoints(digit_id)):
-#     p.setCollisionFilterGroupMask(digit_id,i,collisionFilterGroup2,collisionFilterMask2)
-for i in range(p.getNumJoints(humanoid_id)):
-    for j in range(p.getNumJoints(digit_id)):
-        p.setCollisionFilterPair(humanoid_id, digit_id, i, j, 0)
-    # for j in range(p.getNumJoints(humanoid_ids[0])):
-    #     p.setCollisionFilterPair(humanoid_ids[0], digit_id, i, j, 0)
-joint_types = {0: p.JOINT_REVOLUTE, 1: p.JOINT_PRISMATIC, 2: p.JOINT_SPHERICAL, 3: p.JOINT_PLANAR, 4: p.JOINT_FIXED}
-for i in range(29):
-    info = p.getJointInfo(digit_id, i)
-    print(info[12], info[1], joint_types[info[2]])
-#     print(i, p.getBodyInfo(digit_id, i))
-markers = None
-count = 0
-digit_dofs = retarget_humanoid_to_digit(dof_pos[idx].cpu().numpy())*0
-# digit_dofs[9] = 1.4
-# digit_dofs[11] = 1.7
-# digit_dofs[21] = -1.7
-# digit_dofs[14] = -0.4
-# digit_dofs[0] = 0.4
+############################################################################################################
+###################################### Create Rod constraints for digit ####################################
+############################################################################################################
 
-p.setJointMotorControlArray(digit_id, list(mapping.keys()), p.POSITION_CONTROL, targetPositions=digit_dofs)
-humanoid_eff = [14, 21, 31, 41]
-digit_eff = [26, 12, 21, 7]
-count = 0
-for digit_eff_id, humanoid_eff_id in zip(digit_eff, humanoid_eff):
-    print(p.getJointInfo(digit_id, digit_eff_id), p.getJointInfo(humanoid_id, humanoid_eff_id))
-p.resetBasePositionAndOrientation(humanoid_id, root_pos[idx].cpu().numpy(), root_rot[idx].cpu().numpy())
-p.resetBasePositionAndOrientation(digit_id, root_pos[idx].cpu().numpy()+np.array([0,-1,0.5]), root_rot[idx].cpu().numpy())
-# p.resetBasePositionAndOrientation(franka_id, np.array([0.5,-1,0.0]), [0,0,0,1])
-p.createConstraint(digit_id, -1, plane_id, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], root_pos[idx].cpu().numpy()+np.array([0,-1,0.5]),[0,0,0,1],root_rot[idx].cpu().numpy())
-p.createConstraint(humanoid_id, -1, plane_id, -1, p.JOINT_FIXED, [0,0,0], [0,0,0], root_pos[idx].cpu().numpy()+np.array([0,0,0.05]),[0,0,0,1],root_rot[idx].cpu().numpy())
-#kness constraints
 global_com_knee_l = np.array(p.getLinkState(digit_id, 4)[4:6])
 global_com_knee_r = np.array(p.getLinkState(digit_id, 18)[4:6])
 global_com_tarsus_l = np.array(p.getLinkState(digit_id, 5)[4:6])
@@ -285,105 +274,95 @@ p.changeConstraint(c2, maxForce=1000)
 p.changeConstraint(c3, maxForce=1000)
 p.changeConstraint(c4, maxForce=1000)
 
-
-# c2 = p.createConstraint(digit_id, 12, digit_id, 14, p.JOINT_POINT2POINT, [0,0,0], [-0.02-0.04, 0.1+0.04, 0.0],[-0.1,0.01-0.029,0])
-# toe constraints
-# c3 =p.createConstraint(digit_id, 6, digit_id, 7, p.JOINT_POINT2POINT, [0,0,0], [0.11,-0.085+0.029,0],[-0.049, -0.01,0.0])
-# c4 = p.createConstraint(digit_id, 14, digit_id, 15, p.JOINT_POINT2POINT, [0,0,0], [0.11,0.085-0.029,0],[-0.049,0.01,0.0])
-# p.setConstraintEnable(c1, 1)
-# p.setConstraintEnable(c2, 1)
-# p.setConstraintEnable(c3, 1)
-# p.setConstraintEnable(c4, 1)
-
 retargetted_poses = []
-body_orientations = []
+body_state = []
 error = []
-time.sleep(5)
-while True:
-    # idx +=1
-    # time.sleep(0.1)
-    if idx >= len(root_pos)-1000:
-        idx = 0
-        break
-    
-    # [print(i, p.getJointInfo(humanoid_id, i)[1]) for i in range(p.getNumJoints(humanoid_id))]
-    # print(p.getNumJoints(digit_id), len(digit_dofs))
-    # mapped_joints=[digit_dofs[mapping[i]] for i in range(len(mapping))]
-    # print(len(dof_pos[0].cpu().numpy())), print(len(list(mapping.values())), p.getNumJoints(humanoid_id))
-    p.setJointMotorControlArray(humanoid_id, humanoid_joints, p.POSITION_CONTROL, targetPositions=dof_pos[idx].cpu().numpy())
-    
+humanoid_dduckie = DebugDuckie([1,0,1], humanoid_id, humanoid_eff[2])
+digit_dduckie = DebugDuckie([1,-1,1], digit_id, digit_eff[3])
+digit_left_foot_base_rot = [-0.331,-0.367,-0.654, -0.573]
+digit_right_foot_base_rot = [0.331,-0.367,0.654, -0.573]
+digit_left_foot_base_rot_inv = p.invertTransform([0,0,0],digit_left_foot_base_rot)[1]
+digit_right_foot_base_rot_inv = p.invertTransform([0,0,0],digit_right_foot_base_rot)[1]
+
+digit_dduckie.update(p.multiplyTransforms([0,0,0], p.getLinkState(digit_id, digit_eff[2])[5],[0,0,0], digit_right_foot_base_rot_inv)[1])
+for idx in range(len(root_pos)):
+
+    p.setJointMotorControlArray(humanoid_id, humanoid_joints, p.POSITION_CONTROL, targetPositions=dof_pos[idx].cpu().numpy())    
     p.stepSimulation()
-    count +=1
-    # if markers is not None:
-    #     # print(digit_dofs.shape)
-    #     p.setJointMotorControlArray(digit_id, [i for i in range(22)], p.POSITION_CONTROL, targetPositions=digit_dofs)
-        
-    if markers is None and count ==100:
+    humanoid_dduckie.update()
+    # digit_dduckie.update(p.multiplyTransforms([0,0,0], p.getLinkState(digit_id, digit_eff[3])[5],*p.invertTransform([0,0,0],digit_left_foot_base_rot))[1])
+    digit_dduckie.update(p.multiplyTransforms([0,0,0], p.getLinkState(digit_id, digit_eff[2])[5],[0,0,0], digit_right_foot_base_rot_inv)[1])
+    
+    # digit_dduckie.update(p.multiplyTransforms(*p.invertTransform([0,0,0],digit_left_foot_base_rot),[0,0,0], p.getLinkState(digit_id, digit_eff[3])[5])[1])
+    
+    # digit_dduckie.update(p.multiplyTransforms([0,0,0],p.invertTransform([0,0,0],[0.183,-0.613,-0.206,-0.740])[1],[0,0,0], p.getLinkState(digit_id, digit_eff[2])[5])[1])
+
+    if idx == 0:
+        for i in range(100):
+            p.stepSimulation()
+            time.sleep(1./240.)
         markers_humanoid = create_markers(humanoid_id, body_idxs=humanoid_eff, radius=0.05, colors=[[1,0,0,1], [0,1,0,1], [0,0,1,1], [1,1,0,1]])
         markers_digit = create_markers(digit_id, body_idxs=digit_eff, radius=0.05, colors=[[1,0,0,1], [0,1,0,1], [0,0,1,1], [1,1,0,1]])
-        
-    if count >=1000:
-        for i, marker in enumerate(markers_humanoid):
-            offset = np.array([0,-1,0.2])
-            pos = p.getLinkState(humanoid_id, humanoid_eff[i])[4]
-            p.resetBasePositionAndOrientation(marker, np.array(pos)+offset, [0,0,0,1])
-        for i, marker in enumerate(markers_digit):
-            pos,_ = p.getLinkState(digit_id, digit_eff[i])[4:6]
-            p.resetBasePositionAndOrientation(marker, pos, [0,0,0,1])
-        if get_error(markers_digit, digit_eff, digit_id).sum()<0.0001:
-            # digit_dofs = 
-            digit_dofs = retarget_humanoid_to_digit_ik([p.getBasePositionAndOrientation(marker)[0] for marker in markers_humanoid], 
-                                                    digit_eff,
-                                                    digit_id,
-                                                    p.getJointStates(digit_id,[i for i in range(p.getNumJoints(digit_id)) if p.getJointInfo(digit_id, i)[3]>-1])[0])
-            numJoints = p.getNumJoints(digit_id)
-            # for i in range(numJoints):
-            #     jointInfo = p.getJointInfo(digit_id, i)
-            #     qIndex = jointInfo[3]
-            #     if qIndex > -1:
-            #         # print(i, qIndex, digit_dofs[qIndex-7])
-            #             p.resetJointState(digit_id,i,digit_dofs[qIndex-7])
-            if get_error(markers_digit, digit_eff, digit_id).sum()<0.00001:
-                for i in range(numJoints):
-                    jointInfo = p.getJointInfo(digit_id, i)
-                    qIndex = jointInfo[3]
-                    if qIndex > -1:
-                        # print(i, qIndex, digit_dofs[qIndex-7])
-                            p.resetJointState(digit_id,i,digit_dofs[qIndex-7])
-            retargetted_poses.append(np.concatenate((root_pos[idx].cpu().numpy(),root_rot[idx].cpu().numpy(), digit_dofs)))
-            # print(retargetted_poses[0])
-            # assert False
-            body_orientations.append({p.getJointInfo(digit_id, digit_eff_idx)[12].decode():p.getLinkState(digit_id, digit_eff_idx)[5] for digit_eff_idx in range(30)})
-            # print("link names:", [p.getJointInfo(digit_id, i)[12].decode() for i in range(p.getNumJoints(digit_id))])
-            # print(orientations)
-            error.append(get_error(markers_digit, digit_eff, digit_id))
-            # print("error:",error[-1])
-        idx +=1
-    # time.sleep(0.01)
-# np.save("retargeted_poses_digit_v3.npy", retargetted_poses)
-np.save("retargetted_digit_body_orientations.npy", body_orientations)
-error = np.array(error)**2
-# np.save("error_digit_v2.npy", error)
-fig, axes = plt.subplots(nrows=2, ncols=2)
-axes[0,0].plot(error[:,0])
-axes[0,1].plot(error[:,1])
-axes[1,0].plot(error[:,2])
-axes[1,1].plot(error[:,3])
-axes[0,0].set_title("squared error right hand")
-axes[0,1].set_title("squared error left hand")
-axes[1,0].set_title("squared error right foot")
-axes[1,1].set_title("squared error left foot")
-plt.show()
 
-    
-    # p.setJointMotorControlArray(digit_id, [i for i in range(22)], p.POSITION_CONTROL, targetPositions=digit_dofs)
-    
-        # print("num_joints", p.getNumJoints(franka_id))
-        # franka_dofs = retarget_humanoid_to_franka_ik([p.getBasePositionAndOrientation(marker)[0] for marker in markers],
-        #                                              [9],
-        #                                             franka_id,
-        #                                             p.getJointStates(franka_id,[i for i in range(p.getNumJoints(franka_id))])[0])
-        # # print(franka_dofs.shape)
-        # p.setJointMotorControlArray(franka_id, [i for i in range(p.getNumJoints(franka_id)-1)], p.POSITION_CONTROL, targetPositions=franka_dofs)
+    ################### update marker position from end-effector position and orientation ###################
+    for i in range(len(markers_humanoid)):
+        offset = np.array([0,-1,0.0])
+        pos_eff_humanoid,rot_eff_humanoid = p.getLinkState(humanoid_id, humanoid_eff[i])[4:6]
+        pos_eff_digit,rot_eff_digit = p.getLinkState(digit_id, digit_eff[i])[4:6]
         
-                                                   
+        foot_factor = np.array([1,1,1])
+        if i >1:
+            foot_factor[-1]=1
+        if i == 3:
+           rot_eff_humanoid = p.multiplyTransforms([0,0,0], rot_eff_humanoid, [0,0,0], digit_left_foot_base_rot)[1]
+        elif i == 2:
+            rot_eff_humanoid = p.multiplyTransforms([0,0,0], rot_eff_humanoid, [0,0,0], digit_right_foot_base_rot)[1]
+        else:
+            rot_eff_humanoid = rot_eff_digit
+        p.resetBasePositionAndOrientation(markers_humanoid[i], np.array(pos_eff_humanoid)*foot_factor+offset, rot_eff_humanoid)
+        # p.resetBasePositionAndOrientation(markers_digit[i], pos_eff_digit, rot_eff_digit)
+        left_foot_rot_error = np.linalg.norm(get_quat_error(p.getBasePositionAndOrientation(markers_humanoid[3])[1], p.getLinkState(digit_id, digit_eff[3])[5]))
+        right_foot_rot_error = np.linalg.norm(get_quat_error(p.getBasePositionAndOrientation(markers_humanoid[2])[1], p.getLinkState(digit_id, digit_eff[2])[5]))
+    # while get_error(markers_humanoid, digit_eff, digit_id).sum()>0.0001 or left_foot_rot_error>0.1:# or right_foot_rot_error>0.1:
+    for k in range(1):
+        if idx == 0:
+            initPose = None
+        else:
+            initPose = [p.getJointState(digit_id, digit_body_idx)[0] for digit_body_idx in range(30) if p.getJointInfo(digit_id, digit_body_idx)[2]==0]
+        digit_dofs = retarget_humanoid_to_digit_ik_constrained([p.getBasePositionAndOrientation(marker)[0] for marker in markers_humanoid], 
+                                                    [p.getBasePositionAndOrientation(marker)[1] for marker in markers_humanoid],
+                                                digit_eff,
+                                                digit_id,
+                                                initPose)
+                                                # [p.getJointState(digit_id, digit_body_idx)[0] for digit_body_idx in range(30) if p.getJointInfo(digit_id, digit_body_idx)[2]==0])
+                                                # p.getJointStates(digit_id,[i for i in range(p.getNumJoints(digit_id)) if p.getJointInfo(digit_id, i)[3]>-1])[0])
+
+        # for i in range(p.getNumJoints(digit_id)):
+        #     jointInfo = p.getJointInfo(digit_id, i)
+        #     qIndex = jointInfo[3]
+        #     if qIndex > -1:
+        #             p.resetJointState(digit_id,i,digit_dofs[qIndex-7])
+        left_foot_rot_error = np.linalg.norm(get_quat_error(p.getBasePositionAndOrientation(markers_humanoid[3])[1], p.getLinkState(digit_id, digit_eff[3])[5]))
+        right_foot_rot_error = np.linalg.norm(get_quat_error(p.getBasePositionAndOrientation(markers_humanoid[2])[1], p.getLinkState(digit_id, digit_eff[2])[5]))
+    retargetted_poses.append(np.concatenate((root_pos[idx].cpu().numpy(),root_rot[idx].cpu().numpy(), digit_dofs)))
+    joint_info = {p.getJointInfo(digit_id, digit_body_idx)[12].decode():p.getLinkState(digit_id, digit_body_idx)[5] for digit_body_idx in range(30)}
+    body_state.append((joint_info,root_pos[idx].cpu().numpy(),root_rot[idx].cpu().numpy(),digit_dofs))
+    error.append(get_error(markers_digit, digit_eff, digit_id))
+    quaternion_error = get_quat_error(p.getBasePositionAndOrientation(markers_humanoid[2])[1], p.getLinkState(digit_id, digit_eff[2])[5])
+    print("q error:", quaternion_error)
+    # time.sleep(1)
+
+np.save("digit_state_"+motion_file.split("_")[-1], body_state)
+print("saved digit state at", "digit_state_"+motion_file.split("_")[-1])
+# error = np.array(error)**2
+# # np.save("error_digit_v2.npy", error)
+# fig, axes = plt.subplots(nrows=2, ncols=2)
+# axes[0,0].plot(error[:,0])
+# axes[0,1].plot(error[:,1])
+# axes[1,0].plot(error[:,2])
+# axes[1,1].plot(error[:,3])
+# axes[0,0].set_title("squared error right hand")
+# axes[0,1].set_title("squared error left hand")
+# axes[1,0].set_title("squared error right foot")
+# axes[1,1].set_title("squared error left foot")
+# plt.show()

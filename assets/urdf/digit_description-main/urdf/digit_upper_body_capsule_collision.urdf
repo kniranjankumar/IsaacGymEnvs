@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="digit">
+  <link name="base_link" />
+
+  <!-- release this joint for floating base display. -->
+  <joint name="base_link_to_torso" type="fixed">
+    <parent link="base_link"/>
+    <child link="torso"/>
+  </joint>
+
+  <link name="left_hand"/>
+  <link name="right_hand"/>
+  <!-- <link name="left_foot_bottom"/>
+  <link name="right_foot_bottom"/> -->
+
+  <link name="torso">
+    <!-- in upper body definition, torso has zero inertia, kinematics only -->
+  </link>
+
+  <link name="left_shoulder_roll">
+    <inertial>
+      <origin rpy="0 0 0" xyz="9e-06 -0.003158 0.023405"/>
+      <mass value="0.535396"/>
+      <inertia ixx="0.000704" ixy="1.4e-05" ixz="1.2e-05" iyy="0.00075" iyz="3.5e-05" izz="0.000298"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L1.obj"/>
+      </geometry>
+    </visual>
+    <!-- <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L1.obj"/>
+      </geometry>
+    </collision> -->
+    <!-- collision geometry skipped -->
+  </link>
+  <link name="left_shoulder_cap">
+    <inertial>
+      <origin rpy="0 0 0" xyz="9e-06 -0.003158 0.023405"/>
+      <mass value="0.535396"/>
+      <inertia ixx="0.000704" ixy="1.4e-05" ixz="1.2e-05" iyy="0.00075" iyz="3.5e-05" izz="0.000298"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/shoulder-roll-housing.obj"/>
+      </geometry>
+    </visual>
+    <!-- <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/shoulder-roll-housing.obj"/>
+      </geometry>
+    </collision> -->
+    <!-- collision geometry skipped -->
+  </link>
+  <link name="left_shoulder_pitch">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-4.2e-05 -0.061882 -0.073788"/>
+      <mass value="1.440357"/>
+      <inertia ixx="0.006761" ixy="-6e-06" ixz="-3e-06" iyy="0.002087" iyz="-0.002046" izz="0.005778"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L2.obj"/>
+      </geometry>
+    </visual>
+    <!-- <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L2.obj"/>
+      </geometry>
+    </collision> -->
+    <collision>
+      <origin xyz="0.0 -0.2 -0.1" rpy="1.57079632679 0.0 0.0"/>
+      <geometry>
+        <cylinder radius="0.05" length="0.4"/>
+      </geometry>
+    </collision>
+    <!-- <collision>
+      <origin xyz="0.0 -0.4 -0.1" rpy="1.57079632679 0.0 0.0"/>
+      <geometry>
+        <sphere radius="0.05"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0.0 0.0 -0.1" rpy="1.57079632679 0.0 0.0"/>
+      <geometry>
+        <sphere radius="0.05"/>
+      </geometry>
+    </collision> -->
+  </link>
+  <link name="left_shoulder_yaw">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-3e-05 -0.001937 0.11407"/>
+      <mass value="1.065387"/>
+      <inertia ixx="0.006967" ixy="1e-06" ixz="-1e-06" iyy="0.007003" iyz="1.5e-05" izz="0.000673"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L3.obj"/>
+      </geometry>
+    </visual>
+    <!-- <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L3.obj"/>
+      </geometry>
+    </collision> -->
+    <!-- collision geometry skipped -->
+  </link>
+  <link name="left_elbow">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.107996 -0.000521 -0.017765"/>
+      <mass value="0.550582"/>
+      <inertia ixx="0.000476" ixy="2.9e-05" ixz="0.001403" iyy="0.009564" iyz="1.5e-05" izz="-9e-06"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L4.obj"/>
+      </geometry>
+    </visual>
+    <!-- <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L4.obj"/>
+      </geometry>
+    </collision> -->
+    <collision>
+      <origin xyz="0.2 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+      <geometry>
+        <cylinder radius="0.05" length="0.4"/>
+      </geometry>
+    </collision>
+    <!-- <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+      <geometry>
+        <sphere radius="0.05"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0.4 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+      <geometry>
+        <sphere radius="0.05"/>
+      </geometry>
+    </collision> -->
+  </link>
+  <link name="right_shoulder_roll">
+    <inertial>
+      <origin rpy="0 0 0" xyz="9e-06 0.003158 0.023405"/>
+      <mass value="0.535396"/>
+      <inertia ixx="0.000704" ixy="-1.4e-05" ixz="1.2e-05" iyy="0.00075" iyz="-3.5e-05" izz="0.000298"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L1.obj" scale="1 -1 1"/>
+      </geometry>
+    </visual>
+    <!-- <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L1.obj" scale="1 -1 1"/>
+      </geometry>
+    </collision> -->
+    <!-- collision geometry skipped -->
+  </link>
+  <link name="right_shoulder_cap">
+    <inertial>
+      <origin rpy="0 0 0" xyz="9e-06 0.003158 0.023405"/>
+      <mass value="0.535396"/>
+      <inertia ixx="0.000704" ixy="-1.4e-05" ixz="1.2e-05" iyy="0.00075" iyz="-3.5e-05" izz="0.000298"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/shoulder-roll-housing.obj" scale="1 -1 1"/>
+      </geometry>
+    </visual>
+    <!-- <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/shoulder-roll-housing.obj" scale="1 -1 1"/>
+      </geometry>
+    </collision> -->
+    <!-- collision geometry skipped -->
+  </link>
+  <link name="right_shoulder_pitch">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-4.2e-05 0.061882 -0.073788"/>
+      <mass value="1.440357"/>
+      <inertia ixx="0.006761" ixy="6e-06" ixz="-3e-06" iyy="0.002087" iyz="0.002046" izz="0.005778"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L2.obj" scale="1 -1 1"/>
+      </geometry>
+    </visual>
+    <!-- <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L2.obj" scale="1 -1 1"/>
+      </geometry>
+    </collision> -->
+    <collision>
+      <origin xyz="0.0 0.2 -0.1" rpy="1.57079632679 0.0 0.0"/>
+      <geometry>
+        <cylinder radius="0.05" length="0.4"/>
+      </geometry>
+    </collision>
+    <!-- <collision>
+      <origin xyz="0.0 0.4 -0.1" rpy="1.57079632679 0.0 0.0"/>
+      <geometry>
+        <sphere radius="0.05"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0.0 0.0 -0.1" rpy="1.57079632679 0.0 0.0"/>
+      <geometry>
+        <sphere radius="0.05"/>
+      </geometry>
+    </collision> -->
+  </link>
+  <link name="right_shoulder_yaw">
+    <inertial>
+      <origin rpy="0 0 0" xyz="-3e-05 0.001937 0.11407"/>
+      <mass value="1.065387"/>
+      <inertia ixx="0.006967" ixy="-1e-06" ixz="-1e-06" iyy="0.007003" iyz="-1.5e-05" izz="0.000673"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L3.obj" scale="1 -1 1"/>
+      </geometry>
+    </visual>
+    <!-- <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L3.obj" scale="1 -1 1"/>
+      </geometry>
+    </collision> -->
+    <!-- collision geometry skipped -->
+  </link>
+  <link name="right_elbow">
+    <inertial>
+      <origin rpy="0 0 0" xyz="0.107996 0.000521 -0.017765"/>
+      <mass value="0.550582"/>
+      <inertia ixx="0.000476" ixy="-2.9e-05" ixz="0.001403" iyy="0.009564" iyz="-1.5e-05" izz="-9e-06"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L4.obj" scale="1 -1 1"/>
+      </geometry>
+    </visual>
+    <!-- <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="package://digit_description/urdf/meshes/arm-L4.obj" scale="1 -1 1"/>
+      </geometry>
+    </collision> -->
+    <collision>
+      <origin xyz="0.2 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+      <geometry>
+        <cylinder radius="0.05" length="0.4"/>
+      </geometry>
+    </collision>
+    <!-- <collision>
+      <origin xyz="0.0 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+      <geometry>
+        <sphere radius="0.05"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0.4 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+      <geometry>
+        <sphere radius="0.05"/>
+      </geometry>
+    </collision> -->
+  </link>
+  <joint name="shoulder_roll_joint_left" type="revolute">
+    <origin rpy="-1.57079632679 -1.3962633 1.57079632679" xyz="-0.001 0.12 0.4"/>
+    <axis xyz="0 0 1"/>
+    <parent link="torso"/>
+    <child link="left_shoulder_roll"/>
+    <limit effort="1.4" lower="-1.309" upper="1.309" velocity="12.5"/>
+  </joint>
+  <joint name="shoulder_roll_cap_left" type="fixed">
+    <origin rpy="-1.57079632679 -1.3962633 1.57079632679" xyz="0.001 0.12 0.4"/>
+    <axis xyz="0 0 1"/>
+    <parent link="torso"/>
+    <child link="left_shoulder_cap"/>
+    <limit effort="1.4" lower="-1.309" upper="1.309" velocity="12.5"/>
+  </joint>
+  <joint name="shoulder_pitch_joint_left" type="revolute">
+    <origin rpy="1.57079632679 0.785398163397 -0.2792527" xyz="-0.00317 -0.011055 0.0555"/>
+    <axis xyz="0 0 -1"/>
+    <parent link="left_shoulder_roll"/>
+    <child link="left_shoulder_pitch"/>
+    <limit effort="1.4" lower="-2.5307" upper="2.5307" velocity="12.5"/>
+  </joint>
+  <joint name="shoulder_yaw_joint_left" type="revolute">
+    <origin rpy="1.57079632679 0 0" xyz="0 -0.165 -0.1"/>
+    <axis xyz="0 0 1"/>
+    <parent link="left_shoulder_pitch"/>
+    <child link="left_shoulder_yaw"/>
+    <limit effort="1.4" lower="-1.7453" upper="1.7453" velocity="10"/>
+  </joint>
+  <joint name="elbow_joint_left" type="revolute">
+    <origin rpy="1.57079632679 -0.3926991 0" xyz="0 -0.0385 0.185"/>
+    <axis xyz="0 0 1"/>
+    <parent link="left_shoulder_yaw"/>
+    <child link="left_elbow"/>
+    <limit effort="1.4" lower="-1.3526" upper="1.3526" velocity="12.5"/>
+  </joint>
+  <joint name="hand_joint_left" type="fixed">
+    <origin rpy="0 0 0" xyz="0.38 0 -0.06"/>
+    <axis xyz="0 0 1"/>
+    <parent link="left_elbow"/>
+    <child link="left_hand"/>
+    <limit effort="1.4" lower="-1.3526" upper="1.3526" velocity="12.5"/>
+  </joint>
+  <joint name="shoulder_roll_joint_right" type="revolute">
+    <origin rpy="1.57079632679 -1.3962633 -1.57079632679" xyz="-0.001 -0.12 0.4"/>
+    <axis xyz="0 0 1"/>
+    <parent link="torso"/>
+    <child link="right_shoulder_roll"/>
+    <limit effort="1.4" lower="-1.309" upper="1.309" velocity="12.5"/>
+  </joint>
+  <joint name="shoulder_cap_joint_right" type="fixed">
+    <origin rpy="1.57079632679 -1.3962633 -1.57079632679" xyz="0.001 -0.12 0.4"/>
+    <axis xyz="0 0 1"/>
+    <parent link="torso"/>
+    <child link="right_shoulder_cap"/>
+    <limit effort="1.4" lower="-1.309" upper="1.309" velocity="12.5"/>
+  </joint>
+
+  <joint name="shoulder_pitch_joint_right" type="revolute">
+    <origin rpy="-1.57079632679 0.785398163397 0.2792527" xyz="-0.00317 0.011055 0.0555"/>
+    <axis xyz="0 0 -1"/>
+    <parent link="right_shoulder_roll"/>
+    <child link="right_shoulder_pitch"/>
+    <limit effort="1.4" lower="-2.5307" upper="2.5307" velocity="12.5"/>
+  </joint>
+  <joint name="shoulder_yaw_joint_right" type="revolute">
+    <origin rpy="-1.57079632679 0 0" xyz="0 0.165 -0.1"/>
+    <axis xyz="0 0 1"/>
+    <parent link="right_shoulder_pitch"/>
+    <child link="right_shoulder_yaw"/>
+    <limit effort="1.4" lower="-1.7453" upper="1.7453" velocity="10"/>
+  </joint>
+  <joint name="elbow_joint_right" type="revolute">
+    <origin rpy="-1.57079632679 -0.3926991 0" xyz="0 0.0385 0.185"/>
+    <axis xyz="0 0 1"/>
+    <parent link="right_shoulder_yaw"/>
+    <child link="right_elbow"/>
+    <limit effort="1.4" lower="-1.3526" upper="1.3526" velocity="12.5"/>
+  </joint>
+  <joint name="hand_joint_right" type="fixed">
+    <origin rpy="0.15 0.15 0" xyz="0.38 0 -0.06"/>
+    <axis xyz="0 0 1"/>
+    <parent link="right_elbow"/>
+    <child link="right_hand"/>
+    <limit effort="1.4" lower="-1.3526" upper="1.3526" velocity="12.5"/>
+  </joint>
+
+  <!-- additional links and joint for collision geometries -->
+  <link name="torso_c1"/>
+  <joint name="torso_c1_joint" type="fixed">
+    <origin xyz="0.0 0.0 0.42" rpy="0.0 0.0 0.0"/>
+    <parent link="torso"/>
+    <child link="torso_c1"/>
+  </joint>
+  <link name="torso_c2"/>
+  <joint name="torso_c2_joint" type="fixed">
+    <origin xyz="0.0 -0. 0.12" rpy="0.0 0.0 0.0"/>
+    <parent link="torso"/>
+    <child link="torso_c2"/>
+  </joint>
+
+  <link name="left_shoulder_pitch_c1"/>
+  <joint name="left_shoulder_pitch_c1_joint" type="fixed">
+    <origin xyz="0.0 -0.4 -0.1" rpy="1.57079632679 0.0 0.0"/>
+    <parent link="left_shoulder_pitch"/>
+    <child link="left_shoulder_pitch_c1"/>
+  </joint>
+  <link name="left_shoulder_pitch_c2"/>
+  <joint name="left_shoulder_pitch_c2_joint" type="fixed">
+    <origin xyz="0.0 0.0 -0.1" rpy="1.57079632679 0.0 0.0"/>
+    <parent link="left_shoulder_pitch"/>
+    <child link="left_shoulder_pitch_c2"/>
+  </joint>
+
+  <link name="left_elbow_c1"/>
+  <joint name="left_elbow_c1_joint" type="fixed">
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+    <parent link="left_elbow"/>
+    <child link="left_elbow_c1"/>
+  </joint>
+  <link name="left_elbow_c2"/>
+  <joint name="left_elbow_c2_joint" type="fixed">
+    <origin xyz="0.4 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+    <parent link="left_elbow"/>
+    <child link="left_elbow_c2"/>
+  </joint>
+
+  <link name="right_shoulder_pitch_c1"/>
+  <joint name="right_shoulder_pitch_c1_joint" type="fixed">
+    <origin xyz="0.0 0.4 -0.1" rpy="1.57079632679 0.0 0.0"/>
+    <parent link="right_shoulder_pitch"/>
+    <child link="right_shoulder_pitch_c1"/>
+  </joint>
+  <link name="right_shoulder_pitch_c2"/>
+  <joint name="right_shoulder_pitch_c2_joint" type="fixed">
+    <origin xyz="0.0 0.0 -0.1" rpy="1.57079632679 0.0 0.0"/>
+    <parent link="right_shoulder_pitch"/>
+    <child link="right_shoulder_pitch_c2"/>
+  </joint>
+
+  <link name="right_elbow_c1"/>
+  <joint name="right_elbow_c1_joint" type="fixed">
+    <origin xyz="0.0 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+    <parent link="right_elbow"/>
+    <child link="right_elbow_c1"/>
+  </joint>
+  <link name="right_elbow_c2"/>
+  <joint name="right_elbow_c2_joint" type="fixed">
+    <origin xyz="0.4 0.0 0.0" rpy="0.0 1.57079632679 0.0"/>
+    <parent link="right_elbow"/>
+    <child link="right_elbow_c2"/>
+  </joint>
+
+</robot>

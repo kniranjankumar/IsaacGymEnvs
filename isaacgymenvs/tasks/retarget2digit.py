@@ -128,7 +128,7 @@ mocap = MotionLib(motion_file=motion_file,
                                      key_body_ids=torch.tensor([5,8,11,14],device=torch.device("cuda:0")), 
                                      device=torch.device("cuda:0"))
 length = 10000
-assert False
+# assert False
 print(mocap, mocap.num_motions(),mocap._motion_lengths[0])
 motion_times0 = mocap.sample_time(np.array([0]))
 motion_times0 = [1.0]

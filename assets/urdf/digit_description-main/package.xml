@@ -1,0 +1,18 @@
+<package>
+  <name>digit_description</name>
+  <version>0.0.0</version>
+
+  <description>Digit Model Description</description>
+  <maintainer email="anarayanan70@gatech.edu">Ananda Rangan Narayanan</maintainer>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roslaunch</build_depend>
+  <run_depend>joint_state_publisher</run_depend>
+  <run_depend>joint_state_publisher_gui</run_depend>
+  <run_depend>robot_state_publisher</run_depend>
+  <run_depend>rviz</run_depend>
+  <run_depend>xacro</run_depend>
+
+</package>

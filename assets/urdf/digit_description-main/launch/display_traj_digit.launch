@@ -1,0 +1,37 @@
+<!-- Author: Zhaoyuan Gu
+     Email:  zgu78@gatech.edu
+     Date:   06/27/2022   -->
+
+<launch>
+	<!-- Input Arguments -->
+	<arg name="digit_namespace" 		default="digit" />
+  	<arg name="publish_joint_states" 	default="true" />
+
+	<!-- Load URDFs -->
+	<param name="robot_description" textfile="$(find digit_description)/urdf/digit_xyzyaw.urdf"/>
+
+	<!-- joint state publisher -->
+	<group if = "$(arg publish_joint_states)">
+		<!-- <rosparam command="load" file="$(find digit_description)/config/dependent_joints.yaml" /> -->
+		<node name="joint_state_publisher" pkg="joint_state_publisher_gui" type="joint_state_publisher_gui">
+			<!-- <remap from="robot_description" to="digit_description" /> -->
+			<remap from="joint_states" to="/digit/joint_states" />
+		</node>
+	</group>
+
+
+	<!-- <node name="joint_state_publisher" pkg="digit_description" type="viz_lbl" /> -->
+
+
+	<!-- state publisher -->
+	<node pkg="robot_state_publisher" type="robot_state_publisher" name="digit_state_publisher">
+		<!-- <param name="tf_prefix" value="digit" /> -->
+		<!-- <param name="use_tf_static" type="bool" value="false" /> -->
+		<param name="publish_frequency" type="double" value="100.0" />
+		<!-- <remap from="robot_description" to="digit_description" /> -->
+		<remap from="joint_states" to="/digit/joint_states" />
+	</node>
+
+	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find digit_description)/rviz/digit_gui.rviz" required="false" />
+
+</launch>

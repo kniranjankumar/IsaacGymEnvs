@@ -140,6 +140,7 @@ class DigitAMPBase(VecTask):
         self.cfg["env"]["numObservations"] = self.get_obs_size()
         self.cfg["env"]["numActions"] = self.get_action_size()
 
+        self.randomization_params = self.cfg["task"]["randomization_params"]
         super().__init__(config=self.cfg, rl_device=rl_device, sim_device=sim_device, graphics_device_id=graphics_device_id, headless=headless, virtual_screen_capture=virtual_screen_capture, force_render=force_render)
         
         dt = self.cfg["sim"]["dt"]
@@ -221,10 +222,10 @@ class DigitAMPBase(VecTask):
         self._contact_forces = gymtorch.wrap_tensor(contact_force_tensor).view(self.num_envs, self.num_bodies, 3)
         
         self._terminate_buf = torch.ones(self.num_envs, device=self.device, dtype=torch.long)
-        self.knee_tarsus_rod_length = 0.64+0.16
+        self.knee_tarsus_rod_length = 0.5518
         self.toe_tarsus_rod_length = 0.29
-        self._rod_kp = 100
-        self._rod_kd = 10
+        self._rod_kp = 1000
+        self._rod_kd = 100
         
         if self.viewer != None:
             self._init_camera()
@@ -338,6 +339,8 @@ class DigitAMPBase(VecTask):
         self.dof_limits_lower = []
         self.dof_limits_upper = []
         
+        toe_joints = [i for i,name in enumerate(joint_order) if "toe" in name]
+        self.toe_joints = toe_joints
         for i in range(self.num_envs):
             # create env instance
             env_ptr = self.gym.create_env(
@@ -348,19 +351,26 @@ class DigitAMPBase(VecTask):
             handle = self.gym.create_actor(env_ptr, digit_asset, start_pose, "digit", i, contact_filter, 0)
             self.gym.set_actor_dof_properties(env_ptr, handle, actuator_props)
             actuator_props = self.gym.get_actor_dof_properties(env_ptr, handle)
+            
             for i in range(self.num_dof):
                 actuator_props['driveMode'][i] = gymapi.DOF_MODE_POS
                 actuator_props['stiffness'][i] = self.cfg["env"]["control"]["stiffness"] #self.Kp
                 actuator_props['damping'][i] = self.cfg["env"]["control"]["damping"] #self.Kd
                 actuator_props["armature"][i] = 0.0001
                 actuator_props["effort"][i] = 500
+                if i in toe_joints:
+                    actuator_props["effort"][i] = 5000
+                    actuator_props['stiffness'][i] = 5000 #self.Kp
+                    # actuator_props["upper"][i] = 0
+                    # actuator_props["lower"][i] = 0
+                    
                 
             self.gym.set_actor_dof_properties(env_ptr, handle, actuator_props)
             self.gym.enable_actor_dof_force_sensors(env_ptr, handle)
 
-            for j in range(self.num_bodies):
-                self.gym.set_rigid_body_color(
-                    env_ptr, handle, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.4706, 0.549, 0.6863))
+            # for j in range(self.num_bodies):
+            #     self.gym.set_rigid_body_color(
+            #         env_ptr, handle, j, gymapi.MESH_VISUAL, gymapi.Vec3(0.4706, 0.549, 0.6863))
 
             self.envs.append(env_ptr)
             self.digit_handles.append(handle)
@@ -378,6 +388,7 @@ class DigitAMPBase(VecTask):
             else:
                 self.dof_limits_lower.append(dof_prop['lower'][j])
                 self.dof_limits_upper.append(dof_prop['upper'][j])
+            
 
         self.dof_limits_lower = to_torch(self.dof_limits_lower, device=self.device)
         self.dof_limits_upper = to_torch(self.dof_limits_upper, device=self.device)
@@ -496,7 +507,7 @@ class DigitAMPBase(VecTask):
     def _reset_actors(self, env_ids):
         self._dof_pos[env_ids] = self._initial_dof_pos[env_ids]
         self._dof_vel[env_ids] = self._initial_dof_vel[env_ids]
-
+        
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_dof_state_tensor_indexed(self.sim,
                                               gymtorch.unwrap_tensor(self._dof_state),
@@ -569,9 +580,9 @@ class DigitAMPBase(VecTask):
         forces[:, 4, :] = lknee_tarsus_rod_force.unsqueeze(1)*lknee_tarsus_rod_direction
         forces[:, 14, :] = -forces[:, 12, :]
         forces[:, 6, :] = -forces[:, 4, :]
-        # self.gym.apply_rigid_body_force_at_pos_tensors(self.sim, gymtorch.unwrap_tensor(forces), 
-        #                                           gymtorch.unwrap_tensor(force_positions), 
-        #                                           gymapi.LOCAL_SPACE)
+        self.gym.apply_rigid_body_force_at_pos_tensors(self.sim, gymtorch.unwrap_tensor(forces), 
+                                                  gymtorch.unwrap_tensor(force_positions), 
+                                                  gymapi.LOCAL_SPACE)
 
         # self.gym.apply_rigid_body_force_at_pos_tensors(self.sim, gymtorch.unwrap_tensor(forces), gymtorch.unwrap_tensor(force_positions), gymapi.ENV_SPACE)
         
@@ -581,6 +592,8 @@ class DigitAMPBase(VecTask):
             pd_tar = self._action_to_pd_targets(self.actions)
             pd_tar_tensor = gymtorch.unwrap_tensor(pd_tar)
             # print("here", pd_tar)
+            # for idx in self.toe_joints:
+            #     pd_tar[:,idx] =0 # disable toe joints
             self.gym.set_dof_position_target_tensor(self.sim, pd_tar_tensor)
         else:
             forces = self.actions * self.motor_efforts.unsqueeze(0) * self.power_scale
@@ -700,7 +713,7 @@ class DigitAMPBase(VecTask):
 ###=========================jit functions=========================###
 #####################################################################
 
-# @torch.jit.script
+@torch.jit.script
 def dof_to_obs(pose):
     return pose
     # type: (Tensor) -> Tensor
@@ -794,13 +807,15 @@ def compute_digit_reset(reset_buf, progress_buf, contact_buf, contact_body_ids, 
 
         has_fallen = torch.logical_and(fall_contact, fall_height)
         has_fallen = torch.logical_or(has_fallen, rigid_body_pos[:,0, 2] < termination_height)
-        has_fallen = torch.logical_or(has_fallen, rigid_body_pos[:,0, 2]>1.3)
+        has_fallen = torch.logical_or(has_fallen, rigid_body_pos[:,0, 2]>1.5)
         torso_orientation = get_euler_xyz(rigid_body_rot[:, 0, :])
-        has_fallen = torch.logical_or(has_fallen, torch.abs(torso_orientation[0]) > 1.0)
-        # has_fallen = torch.logical_or(has_fallen, torch.abs(torso_orientation[1]) > 0.3)
-        has_fallen = torch.logical_or(has_fallen, torch.abs(torso_orientation[2]) > 1.0)
+        has_fallen = torch.logical_or(has_fallen, torch.logical_and(5.28>torch.abs(torso_orientation[0]), torch.abs(torso_orientation[0]) > 1.0))
+        has_fallen = torch.logical_or(has_fallen, torch.logical_and(5.28>torch.abs(torso_orientation[1]), torch.abs(torso_orientation[1]) > 1.0))
         
-
+        # has_fallen = torch.logical_or(has_fallen, torch.abs(torso_orientation[1]) > 0.3)
+        # has_fallen = torch.logical_or(has_fallen, torch.abs(torso_orientation[2]) > 1.0)
+        
+        # print(torso_orientation,rigid_body_rot[:, 0, :] , rigid_body_pos[:,0, 2] < termination_height, rigid_body_pos[:,0, 2]>1.5)
         # first timestep can sometimes still have nonzero contact forces
         # so only check after first couple of steps
         has_fallen *= (progress_buf > 1)

@@ -33,3 +33,5 @@ outputs/
 /isaacgymenvs/wandb
 isaacgymenvs/*.npy
 
+recorded_frames/
+

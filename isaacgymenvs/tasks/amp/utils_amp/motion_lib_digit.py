@@ -114,7 +114,7 @@ class MotionLib():
 
             root_pos0[ids, :]  = curr_motion.global_translation[frame_idx0[ids], 0].numpy()
             root_pos1[ids, :]  = curr_motion.global_translation[frame_idx1[ids], 0].numpy()
-
+            # print( curr_motion.global_translation[0])
             root_rot0[ids, :] = curr_motion.global_rotation[frame_idx0[ids], 0].numpy()
             root_rot1[ids, :]  = curr_motion.global_rotation[frame_idx1[ids], 0].numpy()
 
@@ -152,8 +152,12 @@ class MotionLib():
         
         local_rot = slerp(local_rot0, local_rot1, torch.unsqueeze(blend, axis=-1))
         dof_pos = self._local_rotation_to_dof(local_rot)
-        root_pos[:,2] = 0.87
-        root_vel[:,0] = 1.0
+        # print(root_pos[0],root_vel[0])
+        # root_pos[:,2] = 0.87
+        # root_vel[:,0] = 1.0
+        # print(root_vel)
+        # root_pos[:,2] += 0.9
+        # root_vel[:,0] = 1.0
         return root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos#, local_rot
 
     def _load_motions(self, motion_file):
@@ -173,6 +177,9 @@ class MotionLib():
             curr_file = motion_files[f]
             print("Loading {:d}/{:d} motion files: {:s}".format(f + 1, num_motion_files, curr_file))
             curr_motion = SkeletonMotion.from_file(curr_file)
+            # print(curr_motion.global_translation[0])
+            # assert False
+            print("fps-",curr_motion.fps)
             motion_fps = curr_motion.fps
             curr_dt = 1.0 / motion_fps
 
@@ -289,7 +296,7 @@ class MotionLib():
         shuffled_dof[:,2] *= -1 # invert hip flexion left
         shuffled_dof[:,9] *= -1 # invert hip flexion right
         shuffled_dof[:,15] *= -1 # invert shoulder pitch left
-        shuffled_dof[:,19] *= 1 # invert shoulder pitch right
+        shuffled_dof[:,19] *= -1 # invert shoulder pitch right
         # shuffled_dof[:,14] *= -1 # invert shoulder pitch left
         # shuffled_dof[:,18] *= 0 # invert shoulder pitch right
 

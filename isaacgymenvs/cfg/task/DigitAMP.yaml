@@ -8,13 +8,13 @@ env:
   numEnvs: ${resolve_default:4096,${...num_envs}}
   envSpacing: 5
   episodeLength: 300
-  cameraFollow: False # if the camera follows humanoid or not
+  cameraFollow: True # if the camera follows humanoid or not
   enableDebugVis: False
   
   pdControl: True
   powerScale: 1.0
   controlFrequencyInv: 1 # 30 Hz
-  stateInit: "Random"
+  stateInit: "Default"
   hybridInitProb: 0.5
   numAMPObsSteps: 2
 
@@ -26,10 +26,13 @@ env:
   # animation files to learn from
   # these motions should use hyperparameters from HumanoidAMPPPO.yaml
   #motion_file: "amp_humanoid_walk.npy"
-  motion_file: "digit_walk.npy"
+  motion_file: "digit_raisehand.npy"
   # motion_file: "digit_neutral.npy"
+  # motion_file: "digit_dance.npy"
+  # motion_file: "digit_walk.npy"
+  # motion_file: "digit_run.npy"
 
-  #motion_file: "amp_humanoid_dance.npy"
+  # motion_file: "amp_humanoid_dance.npy"
 
   # these motions should use hyperparameters from HumanoidAMPPPOLowGP.yaml
   #motion_file: "amp_humanoid_hop.npy"
@@ -45,8 +48,8 @@ env:
 
   control:
     # PD Drive parameters:
-    stiffness: 1000.0  # [N*m/rad]
-    damping: 0.01     # [N*m*s/rad]
+    stiffness: 200.0  # [N*m/rad]
+    damping: 10.0     # [N*m*s/rad]
     actionScale: 1.0
     controlFrequencyInv: 1 # 60 Hz
 sim:
@@ -71,12 +74,12 @@ sim:
     contact_collection: 2 # 0: CC_NEVER (don't collect contact info), 1: CC_LAST_SUBSTEP (collect only contacts on last substep), 2: CC_ALL_SUBSTEPS (broken - do not use!)
 
 task:
-  randomize: False
+  randomize: True
   randomization_params:
     # specify which attributes to randomize for each actor type and property
     frequency: 600   # Define how many environment steps between generating new randomizations
     observations:
-      range: [0, .002] # range for the white noise
+      range: [0, .02] # range for the white noise
       operation: "additive"
       distribution: "gaussian"
     actions:
@@ -95,7 +98,7 @@ task:
         color: True
         rigid_body_properties:
           mass: 
-            range: [0.5, 1.5]
+            range: [0.0, 2.5]
             operation: "scaling"
             distribution: "uniform"
             setup_only: True # Property will only be randomized once before simulation is started. See Domain Randomization Documentation for more info.

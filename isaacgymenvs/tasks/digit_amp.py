@@ -195,7 +195,7 @@ class DigitAMP(DigitAMPBase):
         # print("node names:",self._motion_lib._motions[0].skeleton_tree.node_names)
         root_pos, root_rot, dof_pos, root_vel, root_ang_vel, dof_vel, key_pos \
                = self._motion_lib.get_motion_state(motion_ids, motion_times)
-
+        # print(root_pos[0], root_rot[0], dof_pos[0], root_vel[0], root_ang_vel[0], dof_vel[0])
         self._set_env_state(env_ids=env_ids, 
                             root_pos=root_pos, 
                             root_rot=root_rot, 
@@ -203,7 +203,7 @@ class DigitAMP(DigitAMPBase):
                             root_vel=root_vel, 
                             root_ang_vel=root_ang_vel, 
                             dof_vel=dof_vel)
-
+        # input("Press Enter to continue...")
         self._reset_ref_env_ids = env_ids
         self._reset_ref_motion_ids = motion_ids
         self._reset_ref_motion_times = motion_times
@@ -265,7 +265,11 @@ class DigitAMP(DigitAMPBase):
         
         self._dof_pos[env_ids] = dof_pos
         self._dof_vel[env_ids] = dof_vel
-
+        ### fix toe joints
+        # for idx in self.toe_joints:
+        #     self._dof_pos[env_ids,idx] = 0.0
+        #     self._dof_vel[env_ids,idx] = 0.0
+        
         env_ids_int32 = env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(self.sim, gymtorch.unwrap_tensor(self._root_states), 
                                                     gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))

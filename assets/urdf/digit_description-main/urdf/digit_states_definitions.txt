@@ -1,0 +1,35 @@
+According to digit_float.urdf 07/05/2022
+28 states for Digit (exclude 4 fixed joints):
+	1. Torso X
+	2. Torso Y
+	3. Torso Z
+	4. Torso Yaw (Z)
+	5. Torso Pitch (Y)
+	6. Torso Roll (X)
+	7. Left Hip Abduction
+	8. Left Hip Rotation
+	9. Left Hip Flexion
+	10. Left Knee Joint
+	Left Knee Spring (knee to shin) (!!! fixed)
+	11. Left Ankle Spring (shin to tarsus)
+	12. Left Toe Pitch
+	13. Left Toe Roll
+	14. Left Shoulder Roll Joint
+	Left Shoulder Roll Cap (!!! fixed)
+	15. Left Shoulder Pitch Joint
+	16. Left Shoulder Yaw Joint
+	17. Left Elbow Joint
+	18. Right Hip Abduction
+	19. Right Hip Rotation
+	20. Right Hip Flexion
+	21. Right Knee Joint
+	Right Knee Spring (knee to shin) (!!! fixed)
+	22. Right Ankle Spring (shin to tarsus)
+	23. Right Toe Pitch
+	24. Right Toe Roll
+	25. Right Shoulder Roll Joint
+	Right Shoulder Roll Cap (!!! fixed)
+	26. Right Shoulder Pitch Joint
+	27. Right Shoulder Yaw Joint
+	28. Right Elbow Joint
+	
