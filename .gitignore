@@ -32,6 +32,6 @@ outputs/
 *.hydra*
 /isaacgymenvs/wandb
 isaacgymenvs/*.npy
-
+wandb/
 recorded_frames/
 
