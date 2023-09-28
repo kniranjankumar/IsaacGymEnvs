@@ -14,7 +14,7 @@ env:
   pdControl: True
   powerScale: 1.0
   controlFrequencyInv: 1 # 30 Hz
-  stateInit: "Default"
+  stateInit: "Random"
   hybridInitProb: 0.5
   numAMPObsSteps: 2
 
@@ -26,7 +26,8 @@ env:
   # animation files to learn from
   # these motions should use hyperparameters from HumanoidAMPPPO.yaml
   #motion_file: "amp_humanoid_walk.npy"
-  motion_file: "digit_raisehand.npy"
+  motion_file: "a_person_celebrating_joyfully.npy"
+  # motion_file: "a_person_stepping_to_their_side_gradually.npy"
   # motion_file: "digit_neutral.npy"
   # motion_file: "digit_dance.npy"
   # motion_file: "digit_walk.npy"
