@@ -42,7 +42,7 @@ from isaacgymenvs.tasks.amp.utils_amp.motion_lib_digit import MotionLib
 
 from isaacgym.torch_utils import *
 from isaacgymenvs.utils.torch_jit_utils import *
-
+import pickle
 
 NUM_AMP_OBS_PER_STEP = 13 + 22 + 22 + 12 # [root_h, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos]
 
@@ -148,7 +148,11 @@ class DigitAMP(DigitAMPBase):
     def reset_idx(self, env_ids):
         super().reset_idx(env_ids)
         self._init_amp_obs(env_ids)
-        return
+        # Save self.action_history to actions.pkl
+        # with open('actions.pkl', 'wb') as file:
+        #     print("saving actions")
+        #     pickle.dump(self.action_history, file)
+        # return
 
     def _reset_actors(self, env_ids):
         if (self._state_init == DigitAMP.StateInit.Default):

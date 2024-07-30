@@ -37,6 +37,7 @@ from isaacgym.torch_utils import *
 
 from isaacgymenvs.utils.torch_jit_utils import *
 from ..base.vec_task import VecTask
+import pickle
 # DOF_BODY_IDS = [1, 2, 3, 4, 6, 7, 9, 10, 11, 12, 13, 14]
 # DOF_BODY_IDS = [1,2,3,4,6,7,8,9,11,12,13,14,15,16,17,19,20,21,22,26,27,28]
 # DOF_BODY_IDS = [i for i in range(22)]
@@ -226,10 +227,10 @@ class DigitAMPBase(VecTask):
         self.toe_tarsus_rod_length = 0.29
         self._rod_kp = 1000
         self._rod_kd = 100
-        
+        # self.action_history = []
         if self.viewer != None:
             self._init_camera()
-            
+        
         return
 
     def get_obs_size(self):
@@ -255,7 +256,9 @@ class DigitAMPBase(VecTask):
         self._reset_actors(env_ids)
         self._refresh_sim_tensors()
         self._compute_observations(env_ids)
+        
         return
+
 
     def set_char_color(self, col):
         for i in range(self.num_envs):
@@ -591,6 +594,8 @@ class DigitAMPBase(VecTask):
         if (self._pd_control):
             pd_tar = self._action_to_pd_targets(self.actions)
             pd_tar_tensor = gymtorch.unwrap_tensor(pd_tar)
+            # print([pd_tar[0,i].tolist() for i in self.toe_joints])
+            # self.action_history.append(pd_tar[0].tolist())
             # print("here", pd_tar)
             # for idx in self.toe_joints:
             #     pd_tar[:,idx] =0 # disable toe joints

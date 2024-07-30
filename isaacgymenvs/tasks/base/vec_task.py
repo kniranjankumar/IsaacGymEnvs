@@ -374,7 +374,7 @@ class VecTask(Env):
         action_tensor = torch.clamp(actions, -self.clip_actions, self.clip_actions)
         # apply actions
         self.pre_physics_step(action_tensor)
-        time.sleep(0.1)
+        # time.sleep(0.1)
         # step physics and render each frame
         for i in range(self.control_freq_inv):
             if self.force_render:
